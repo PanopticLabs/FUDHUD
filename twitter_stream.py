@@ -29,7 +29,7 @@ coinmarketcap = json.loads(response.read())
 for coin in coinmarketcap:
     symbol = '$' + coin['symbol'].lower()
     cryptos.append(symbol)
-    print cryptos
+    print(cryptos)
 
 keywords = cryptos[:]
 
@@ -161,7 +161,7 @@ class MyListener(StreamListener):
                         keywords.extend(newwords)
                         #Get current date to check against the database and add to each row
                         today = time.strftime('%Y-%m-%d %H:00:00')
-                        print today
+                        #print(today)
                         #Start count of topics mentioned, which deterimines whether a user gets added to spam
                         topicCount = 0;
                         topicLimit = 5;

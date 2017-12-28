@@ -29,7 +29,7 @@ coinmarketcap = json.loads(response.read())
 for coin in coinmarketcap:
     symbol = '$' + coin['symbol'].lower()
     cryptos.append(symbol)
-    print(cryptos)
+    #print(cryptos)
 
 keywords = cryptos[:]
 

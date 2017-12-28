@@ -93,7 +93,7 @@ def getPopularColumns(amount):
 
 def notify_node(array):
     data = json.dumps(array)
-    url = 'http://127.0.0.1:1337/'
+    url = 'https://fierce-forest-58606.herokuapp.com/'
     headers = {'Content-Type': 'application/json', 'Content-Length' : str(len(data))}
     res = requests.post(url, data=data, headers=headers)
 

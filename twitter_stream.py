@@ -166,9 +166,11 @@ class MyListener(StreamListener):
                         topicCount = 0;
                         topicLimit = 5;
 
+                        topics = []
                         for word in keywords:
                             if contains_word(tweet['text'], word):
                                 topicCount += 1
+                                topics.append(word)
 
                                 word = word.lower()
                                 #Check if the topic already in the table for today
@@ -214,7 +216,7 @@ class MyListener(StreamListener):
                         print('USER NOT IN SPAM LIST')
                         result = queryMySQL("SELECT twitterID FROM crypto_users WHERE twitterID=%s", (tweet['user']['id'],))
 
-                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8")}
+                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'topics' : topics}
 
                         print(tweet['entities'])
                         if 'media' in tweet['entities']:

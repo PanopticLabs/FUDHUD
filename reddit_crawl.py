@@ -92,7 +92,6 @@ def crawl():
     #################################################################################
     keywords = getCoins()
 
-
     for word in keywords:
         if word in reddit_links:
             subreddits = reddit_links[word]
@@ -145,7 +144,6 @@ def crawl():
 
                         queryMySQL("UPDATE crypto_activity SET subscribers=%s, activeAccounts=%s, newPosts=%s WHERE activityID=%s", (subscribers, active_accounts, new_posts, activityID))
 
-
                     fp_sentiment = 0
                     fp_count = 0
 
@@ -178,7 +176,6 @@ def crawl():
                                 else:
                                     for row in user_result:
                                         post_userID = row['userID']
-
                                 if post.is_self == True:
                                     #print('Selftext')
                                     post_text = post.selftext
@@ -200,7 +197,7 @@ def crawl():
 
                                 #print(post_text)
 
-                                post_id = queryMySQL("INSERT INTO crypto_posts(postUnique, userID, unix, title, content, postSentiment) VALUES(%s, %s, %s, %s, %s, %s)", (post_unique, post_userID, post_time, post_title, post_text, post_sentiment))
+                                post_id = queryMySQL("INSERT INTO crypto_posts(postUnique,subredditID, userID, unix, title, content, postSentiment) VALUES(%s, %s, %s, %s, %s, %s, %s)", (post_unique, subredditID, post_userID, post_time, post_title, post_text, post_sentiment))
                             else:
                                 for row in result:
                                     post_id = row['postID']

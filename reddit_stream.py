@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw
 from textblob import TextBlob as tb
 from datetime import date, timedelta
@@ -74,7 +75,7 @@ def getCoins():
         shitlist = ['pay', 'sub', 'part', 'fun']
         if symbol in shitlist:
             coin_list.append(name)
-            coin_dict[topic] = [name]    
+            coin_dict[topic] = [name]
         else:
             coin_list.append(name)
             coin_list.append(symbol)

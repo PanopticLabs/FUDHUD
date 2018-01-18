@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw
 from textblob import TextBlob as tb
 from datetime import date, timedelta

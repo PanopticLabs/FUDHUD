@@ -16,7 +16,7 @@ access_secret = cred['access_secret']
 mysql_user = cred['mysql_user']
 mysql_pass = cred['mysql_pass']
 mysql_host = cred['mysql_host']
-mysql_db = cred['mysql_db']
+mysql_db = cred['mysql_twitter_db']
 
 #keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
 #cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
@@ -160,7 +160,7 @@ class MyListener(StreamListener):
                         #if (len(keywords) + len(newwords)) < 500:
                         keywords.extend(newwords)
                         #Get current date to check against the database and add to each row
-                        today = time.strftime('%Y-%m-%d %H:00:00')
+                        today = time.strftime('%Y-%m-%d %H:%M:00')
                         #print(today)
                         #Start count of topics mentioned, which deterimines whether a user gets added to spam
                         topicCount = 0;

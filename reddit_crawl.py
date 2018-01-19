@@ -106,8 +106,8 @@ def crawl():
                 else:
                     for row in result:
                         subredditID = row['subredditID']
-                        queryMySQL("UPDATE crypto_subreddits SET name=%s WHERE subredditID=%s", (name, subredditID))
-
+                        queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
+                        
                 #json_about = getJSON(subreddit + "/about")
                 s = reddit.subreddit(name)
                 try:

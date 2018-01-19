@@ -110,9 +110,9 @@ def stream():
         coins = getCoins()
         subreddits = ''
         for topic in reddit_links:
-            #print(topic)
+            print(topic)
             for subreddit in reddit_links[topic]:
-                #print(subreddit)
+                print(subreddit)
                 name = subreddit[25:]
                 if(subreddits == ''):
                     subreddits = name
@@ -127,7 +127,7 @@ def stream():
                         subredditID = row['subredditID']
                         queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
 
-        #print(subreddits)
+        print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
             #Get current date to check against the database and add to each row
             dt = time.strftime('%Y-%m-%d %H:%M:00')

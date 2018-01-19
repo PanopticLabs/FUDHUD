@@ -119,6 +119,14 @@ def stream():
                 else:
                     subreddits = subreddits + '+' + name
 
+                result = queryMySQL("SELECT subredditID FROM crypto_subreddits WHERE url=%s", (subreddit,))
+                if len(result) == 0:
+                    subredditID = queryMySQL("INSERT INTO crypto_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,word))
+                else:
+                    for row in result:
+                        subredditID = row['subredditID']
+                        queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
+
         #print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
             #Get current date to check against the database and add to each row
@@ -151,9 +159,9 @@ def stream():
 
                 for topic in coins['dict']:
                     if any(word in c.split() for word in coins['dict'][topic]):
-                        result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE datetime=%s AND topic=%s", (dt, topic))
+                        result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (dt, topic))
                         if len(result) == 0:
-                            mentionID = queryMySQL("INSERT INTO crypto_mentions (datetime, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
+                            mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
                         else:
                             for row in result:
                                 mentionID = row['mentionID']

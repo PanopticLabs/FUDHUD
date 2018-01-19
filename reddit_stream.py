@@ -121,7 +121,7 @@ def stream():
 
                 result = queryMySQL("SELECT subredditID FROM crypto_subreddits WHERE url=%s", (subreddit,))
                 if len(result) == 0:
-                    subredditID = queryMySQL("INSERT INTO crypto_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,word))
+                    subredditID = queryMySQL("INSERT INTO crypto_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,topic))
                 else:
                     for row in result:
                         subredditID = row['subredditID']

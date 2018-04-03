@@ -9,10 +9,10 @@ from tweepy.streaming import StreamListener
 with open('cred.json') as json_cred:
     cred = json.load(json_cred)
 
-consumer_key = 'aqckp76LQVrIO1fsb990mTwzs'
-consumer_secret = 'MLlnpTRjjuNIRd0mciWeRXkbUrcj5c6Dr9vqDTG1vEaOnsfqja'
-access_token = '907369269788237824-5BTaRXggEBWXf9keg0qIEHVzhPFjvdZ'
-access_secret = 'WOHMm6aIofadhOO9fnQdBylU9gv8JN8yJO99rCvgWP7cC'
+consumer_key = cred['consumer_key']
+consumer_secret = cred['consumer_secret']
+access_token = cred['access_token']
+access_secret = cred['access_secret']
 
 mysql_user = cred['mysql_user']
 mysql_pass = cred['mysql_pass']

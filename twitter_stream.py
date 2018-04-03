@@ -41,7 +41,7 @@ def getCoins():
         symname = '$' + name
         hashname = '#' + name
         #Check that symbol does not use an ambiguous word
-        shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky']
+        shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky', 'link']
         if symbol in shitlist:
             coin_list.append(hashname)
             coin_list.append(symname)

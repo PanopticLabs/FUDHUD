@@ -100,6 +100,12 @@ def strip_non_ascii(string):
     newstring = newstring[:4995] + (newstring[4995:] and '...')
     return newstring
 
+def notify_node(array):
+    data = json.dumps(array)
+    url = 'https://fierce-forest-58606.herokuapp.com/'
+    headers = {'Content-Type': 'application/json', 'Content-Length' : str(len(data))}
+    res = requests.post(url, data=data, headers=headers)
+
 def stream():
     try:
         #Retrieve URLs from JSON#########################################################
@@ -110,9 +116,9 @@ def stream():
         coins = getCoins()
         subreddits = ''
         for topic in reddit_links:
-            print(topic)
+            #print(topic)
             for subreddit in reddit_links[topic]:
-                print(subreddit)
+                #print(subreddit)
                 name = subreddit[25:]
                 if(subreddits == ''):
                     subreddits = name
@@ -127,13 +133,14 @@ def stream():
                         subredditID = row['subredditID']
                         queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
 
-        print(subreddits)
+        #print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
             #Get current date to check against the database and add to each row
             dt = time.strftime('%Y-%m-%d %H:%M:00')
 
             comment_body = strip_non_ascii(comment.body)
             print(comment_body)
+            #print(dir(comment))
             c = comment_body.lower()
             if any(word in c.split() for word in coins['list']):
                 comment_author = str(comment.author)
@@ -141,6 +148,7 @@ def stream():
                 comment_postUnique = comment.submission.id
                 comment_parentUnique = comment.parent_id
                 comment_time = comment.created_utc
+                comment_link = 'https://www.reddit.com' + comment.permalink
 
                 analysis = tb(comment_body)
                 sentiment = analysis.sentiment.polarity
@@ -157,8 +165,11 @@ def stream():
 
                 comment_id = queryMySQL("INSERT INTO crypto_comments(commentUnique, postUnique, parentUnique, userID, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
 
+                topics = []
                 for topic in coins['dict']:
                     if any(word in c.split() for word in coins['dict'][topic]):
+                        print(topic)
+                        topics.append(topic)
                         result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (dt, topic))
                         if len(result) == 0:
                             mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
@@ -176,9 +187,16 @@ def stream():
 
                                     queryMySQL("UPDATE crypto_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
 
-    except:
-        pass
+                print('NOTIFYING!')
+                commentObj = {'service' : 'redditstream', 'author' : comment_author, 'comment' : comment_body, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'link' : comment_link, 'topics' : topics}
+                print(commentObj)
+                notify_node(commentObj)
+                print('NOTIFIED!!')
 
+    #except:
+        #pass
+    except BaseException as e:
+        print("Error on_data: %s" % str(e))
 
 while True:
     print('Starting Reddit Stream...')

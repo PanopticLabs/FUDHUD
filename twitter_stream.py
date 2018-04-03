@@ -9,10 +9,10 @@ from tweepy.streaming import StreamListener
 with open('cred.json') as json_cred:
     cred = json.load(json_cred)
 
-consumer_key = cred['consumer_key']
-consumer_secret = cred['consumer_secret']
-access_token = cred['access_token']
-access_secret = cred['access_secret']
+consumer_key = 'aqckp76LQVrIO1fsb990mTwzs'
+consumer_secret = 'MLlnpTRjjuNIRd0mciWeRXkbUrcj5c6Dr9vqDTG1vEaOnsfqja'
+access_token = '907369269788237824-5BTaRXggEBWXf9keg0qIEHVzhPFjvdZ'
+access_secret = 'WOHMm6aIofadhOO9fnQdBylU9gv8JN8yJO99rCvgWP7cC'
 
 mysql_user = cred['mysql_user']
 mysql_pass = cred['mysql_pass']
@@ -22,17 +22,45 @@ mysql_db = cred['mysql_twitter_db']
 #keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
 #cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
 cryptos = []
+blacklist = set(['accepting new users', 'Binance registration'])
 
-#Get coinmarketcap data
-url = 'https://api.coinmarketcap.com/v1/ticker/?limit=100'
-response = urllib.urlopen(url)
-coinmarketcap = json.loads(response.read())
-for coin in coinmarketcap:
-    symbol = '$' + coin['symbol'].lower()
-    cryptos.append(symbol)
-    #print(cryptos)
+def getCoins():
+    #Get coinmarketcap data
+    coins = {}
+    coin_list = []
+    coin_dict = {}
+    url = 'https://api.coinmarketcap.com/v1/ticker/?limit=100'
+    response = urllib.urlopen(url)
+    coinmarketcap = json.loads(response.read())
+    for coin in coinmarketcap:
+        name = coin['name'].lower()
+        name = name.replace(" ", "")
+        symbol = coin['symbol'].lower()
+        topic = '$' + symbol
+        hashsym = '#' + symbol
+        symname = '$' + name
+        hashname = '#' + name
+        #Check that symbol does not use an ambiguous word
+        shitlist = ['pay', 'sub', 'part', 'fun', 'bts']
+        if symbol in shitlist:
+            coin_list.append(hashname)
+            coin_list.append(symname)
+            coin_list.append(topic)
+            coin_dict[topic] = [hashname, symname, topic]
+        else:
+            coin_list.append(hashname)
+            coin_list.append(symname)
+            coin_list.append(topic)
+            coin_list.append(hashsym)
+            coin_dict[topic] = [hashname, symname, topic, hashsym]
+        #print(cryptos)
 
-keywords = cryptos[:]
+    coins['list'] = coin_list
+    coins['dict'] = coin_dict
+    return coins
+
+
+coins = getCoins()
 
 #
 #Setup MySQL connection
@@ -114,7 +142,7 @@ def remove_values_from_list(the_list, val):
 def startStream():
     try:
         twitter_stream = Stream(auth, MyListener())
-        twitter_stream.filter(track=cryptos)
+        twitter_stream.filter(track=coins['list'])
     except:
         pass
 
@@ -124,42 +152,50 @@ class MyListener(StreamListener):
         try:
             print("Starting...")
             tweet = json.loads(data)
+            #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
             print("Checking tweet...")
-            if(tweet['text'].startswith('RT ') is False): #Remove any retweets
-
-                #Check if user is in our spam list
-                result = queryMySQL("SELECT twitterID, name FROM spammers WHERE name=%s", (tweet['user']['screen_name'],))
-                #If user is not in spam list, continue
-                if len(result) == 0:
+            #Check if user is in our spam list
+            result = queryMySQL("SELECT twitterID, name FROM spammers WHERE name=%s", (tweet['user']['screen_name'],))
+            print("1")
+            #If user is not in spam list, continue
+            if len(result) == 0:
+                print("2")
+                status_link = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+                print("3")
+                if(tweet['text'].startswith('RT ') is False): #Remove any retweets
+                    print("4")
                     #Remove urls from tweet text (tweet urls are unique even if the text is identical)
                     text = re.sub(r"(?:\@|https?\://)\S+", "", tweet['text'])
                     #Hash text for comparison
                     textHash = hash(text)
                     #Check if hash is in the hash list
-                    if textHash not in hashList:
+                    if (textHash not in hashList) and (not bool(blacklist.intersection(text))):
+                        print("5")
                         print("Tweet Passes...")
                         #Since the hash isn't in the list, add it to the list
                         hashList.append(textHash)
 
-                        print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
-                        print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
-                        print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
+
+                        #print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
+                        #print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
+                        #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
 
                         analysis = tb(tweet['text'])
                         sentiment = analysis.sentiment.polarity
-                        print(sentiment)
-                        print('')
+                        #print(sentiment)
+                        #print('')
 
                         #Check for new words
                         pattern = r'(?:^|\s)(\$[^\W\d_]+)'
                         search = re.findall(pattern, strip_non_ascii(tweet['text']))
                         search = [x.lower() for x in search]
-                        newwords = list(set(search) - set(keywords))
-                        print(newwords)
-                        print('')
+                        newwords = list(set(search) - set(coins['dict'].keys()))
+                        #print(newwords)
+                        #print('')
                         #Add the new words to our keyword list
                         #if (len(keywords) + len(newwords)) < 500:
-                        keywords.extend(newwords)
+                        for newword in newwords:
+                            coins['dict'][newword] = [newword]
                         #Get current date to check against the database and add to each row
                         today = time.strftime('%Y-%m-%d %H:%M:00')
                         #print(today)
@@ -168,16 +204,19 @@ class MyListener(StreamListener):
                         topicLimit = 5;
 
                         topics = []
-                        for word in keywords:
-                            if contains_word(tweet['text'], word):
+                        t = tweet['text'].lower()
+                        for topic in coins['dict']:
+                            if any(word in t.split() for word in coins['dict'][topic]):
+                                #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
+                                print(topic)
                                 topicCount += 1
-                                topics.append(word)
+                                topics.append(topic)
 
-                                word = word.lower()
+                                #word = word.lower()
                                 #Check if the topic already in the table for today
-                                result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (today, word))
+                                result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (today, topic))
                                 if len(result) == 0:
-                                    mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (today, word, 1, sentiment))
+                                    mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (today, topic, 1, sentiment))
                                 else:
                                     for row in result:
                                         mentionID = row['mentionID']
@@ -217,12 +256,12 @@ class MyListener(StreamListener):
                         print('USER NOT IN SPAM LIST')
                         result = queryMySQL("SELECT twitterID FROM crypto_users WHERE twitterID=%s", (tweet['user']['id'],))
 
-                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'topics' : topics}
+                        tweetObj = {'service' : 'tweetstreamtest', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
 
-                        print(tweet['entities'])
+                        #print(tweet['entities'])
                         if 'media' in tweet['entities']:
                             tweetMedia = tweet['entities']['media'][0]['media_url_https']
-                            print(tweet['entities']['media'][0]['media_url_https'])
+                            #print(tweet['entities']['media'][0]['media_url_https'])
                             tweetObj['media'] = tweetMedia
 
                         notify_node(tweetObj)
@@ -235,8 +274,25 @@ class MyListener(StreamListener):
                     print('')
                     return True
 
+                #if tweet is a retweet
                 else:
-                    print('')
+                    print('RETWEET')
+                    #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
+                    topics = []
+                    t = tweet['retweeted_status']['text'].lower()
+                    for topic in coins['dict']:
+                        if any(word in t.split() for word in coins['dict'][topic]):
+                            #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
+                            #print(topic)
+                            topics.append(topic)
+
+                    tweetObj = {'service' : 'tweetstreamtest', 'name' : tweet['retweeted_status']['user']['name'], 'screen_name'  : tweet['retweeted_status']['user']['screen_name'], 'pic' : tweet['retweeted_status']['user']['profile_image_url'], 'tweet' : tweet['retweeted_status']['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : tweet['retweeted_status']['retweet_count'], 'fav_count' : tweet['retweeted_status']['favorite_count'], 'topics' : topics}
+                    print(json.dumps(tweetObj, indent=4, separators=(',', ': ')))
+                    notify_node(tweetObj)
+
+
+            print('')
+            return True
 
         except BaseException as e:
             print("Error on_data: %s" % str(e))
@@ -258,7 +314,7 @@ class MyListener(StreamListener):
 #queryMySQL("ALTER TABLE trends ADD $crypto INT(10) UNSIGNED NOT NULL DEFAULT 0")
 #queryMySQL("ALTER TABLE trends ALTER COLUMN $crypto SET DEFAULT 0")
 hashList = []
-
+print(coins['list'])
 auth = OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)
 

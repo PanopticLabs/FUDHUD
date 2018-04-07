@@ -15,5 +15,9 @@ For example, to get a viz of Bitcoin over the last year, type the following:
       python trendviz.py year bitcoin
 
 
+# Requirements
+
+pandas, plotly
+
 
 I only tested this on a Linux machine, sorry if there are issues with Windows or Mac.

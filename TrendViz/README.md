@@ -18,6 +18,7 @@ For example, to get a viz of Bitcoin over the last year, type the following:
 # Requirements
 
 pip install pandas
+
 pip install plotly
 
 

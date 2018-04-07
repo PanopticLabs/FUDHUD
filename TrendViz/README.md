@@ -17,7 +17,10 @@ For example, to get a viz of Bitcoin over the last year, type the following:
 
 # Requirements
 
-pandas, plotly
+pip install pandas
+pip install plotly
 
 
-I only tested this on a Linux machine, sorry if there are issues with Windows or Mac.
+# Troubleshooting
+
+I only tested this on a Linux machine, so there may be unforseen issues on other devices. You may have to change the filepaths to work for your system, e.g. change '/' to '\'

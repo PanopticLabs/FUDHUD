@@ -41,7 +41,7 @@ def getCoins():
         symname = '$' + name
         hashname = '#' + name
         #Check that symbol does not use an ambiguous word
-        shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky', 'link', 'elf']
+        shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky', 'link', 'elf', 'waves']
         if symbol in shitlist:
             coin_list.append(hashname)
             coin_list.append(symname)
@@ -256,7 +256,7 @@ class MyListener(StreamListener):
                         print('USER NOT IN SPAM LIST')
                         result = queryMySQL("SELECT twitterID FROM crypto_users WHERE twitterID=%s", (tweet['user']['id'],))
 
-                        tweetObj = {'service' : 'tweetstreamtest', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
+                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
 
                         #print(tweet['entities'])
                         if 'media' in tweet['entities']:
@@ -286,7 +286,7 @@ class MyListener(StreamListener):
                             #print(topic)
                             topics.append(topic)
 
-                    tweetObj = {'service' : 'tweetstreamtest', 'name' : tweet['retweeted_status']['user']['name'], 'screen_name'  : tweet['retweeted_status']['user']['screen_name'], 'pic' : tweet['retweeted_status']['user']['profile_image_url'], 'tweet' : tweet['retweeted_status']['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : tweet['retweeted_status']['retweet_count'], 'fav_count' : tweet['retweeted_status']['favorite_count'], 'topics' : topics}
+                    tweetObj = {'service' : 'tweetstream', 'name' : tweet['retweeted_status']['user']['name'], 'screen_name'  : tweet['retweeted_status']['user']['screen_name'], 'pic' : tweet['retweeted_status']['user']['profile_image_url'], 'tweet' : tweet['retweeted_status']['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : tweet['retweeted_status']['retweet_count'], 'fav_count' : tweet['retweeted_status']['favorite_count'], 'topics' : topics}
                     print(json.dumps(tweetObj, indent=4, separators=(',', ': ')))
                     notify_node(tweetObj)
 

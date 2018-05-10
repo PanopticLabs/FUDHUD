@@ -17,7 +17,7 @@ access_secret = cred['access_secret']
 mysql_user = cred['mysql_user']
 mysql_pass = cred['mysql_pass']
 mysql_host = cred['mysql_host']
-mysql_db = cred['mysql_twitter_db']
+mysql_db = 'panoptic_fudhud'
 
 #keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
 #cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
@@ -46,13 +46,13 @@ def getCoins():
             coin_list.append(hashname)
             coin_list.append(symname)
             coin_list.append(topic)
-            coin_dict[topic] = [hashname, symname, topic]
+            coin_dict[symbol] = [hashname, symname, topic]
         else:
             coin_list.append(hashname)
             coin_list.append(symname)
             coin_list.append(topic)
             coin_list.append(hashsym)
-            coin_dict[topic] = [hashname, symname, topic, hashsym]
+            coin_dict[symbol] = [hashname, symname, topic, hashsym]
         #print(cryptos)
 
     coins['list'] = coin_list
@@ -94,32 +94,6 @@ def queryMySQL(query, variables=None):
         print(e)
         return
 
-def getAllColumns():
-    conn = connection.cursor(dictionary=True, buffered=True)
-
-    conn.execute("SELECT * FROM trends LIMIT 1")
-    numColumns = len(conn.description)
-    columns = [i[0] for i in conn.description]
-    columns = remove_values_from_list(columns, 'id')
-    columns = remove_values_from_list(columns, 'date')
-    connection.commit()
-    dbwords = columns
-
-    return dbwords
-
-def getPopularColumns(amount):
-    yesterday = date.today() - timedelta(1)
-    yesterday.strftime('%Y-%m-%d')
-    result = queryMySQL("SELECT * FROM trends WHERE date=%s", (yesterday, ))
-    for row in result:
-        row.pop('id', 0)
-        row.pop('date', 0)
-        dbwords = row.keys()
-
-    keywords = sorted(dbwords, key=row.__getitem__, reverse=True)
-    keywords = keywords[:amount]
-    return keywords
-
 def notify_node(array):
     data = json.dumps(array)
     url = 'https://fierce-forest-58606.herokuapp.com/'
@@ -155,7 +129,7 @@ class MyListener(StreamListener):
             #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
             print("Checking tweet...")
             #Check if user is in our spam list
-            result = queryMySQL("SELECT twitterID, name FROM spammers WHERE name=%s", (tweet['user']['screen_name'],))
+            result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (tweet['user']['screen_name'],))
             print("1")
             #If user is not in spam list, continue
             if len(result) == 0:
@@ -214,14 +188,14 @@ class MyListener(StreamListener):
 
                                 #word = word.lower()
                                 #Check if the topic already in the table for today
-                                result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (today, topic))
+                                result = queryMySQL("SELECT mentionID FROM twitter_mentions WHERE date=%s AND topic=%s", (today, topic))
                                 if len(result) == 0:
-                                    mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (today, topic, 1, sentiment))
+                                    mentionID = queryMySQL("INSERT INTO twitter_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (today, topic, 1, sentiment))
                                 else:
                                     for row in result:
                                         mentionID = row['mentionID']
 
-                                        result = queryMySQL("SELECT * FROM crypto_mentions WHERE mentionID=%s", (mentionID, ))
+                                        result = queryMySQL("SELECT * FROM twitter_mentions WHERE mentionID=%s", (mentionID, ))
                                         for row in result:
                                             wordcount = row['mentions']
                                             totalSentiment = float(row['sentiment']) * wordcount
@@ -231,12 +205,12 @@ class MyListener(StreamListener):
 
                                             newSentiment = totalSentiment / wordcount
 
-                                            queryMySQL("UPDATE crypto_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
+                                            queryMySQL("UPDATE twitter_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
 
 
                         if topicCount > topicLimit:
                             #Add user to spam list
-                            queryMySQL("INSERT INTO spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
+                            queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
                             print('USER ADDED TO SPAM LIST FOR TOO MANY TOPICS')
                             print('')
 
@@ -247,14 +221,14 @@ class MyListener(StreamListener):
 
                     else:
                         #Add user to spam list
-                        queryMySQL("INSERT INTO spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
+                        queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
                         print('USER ' + tweet['user']['screen_name'] + ' ADDED TO SPAM LIST FOR REPEAT TWEET: ' + tweet['text'])
                         print('')
 
-                    result = queryMySQL("SELECT twitterID FROM spammers WHERE twitterID=%s", (tweet['user']['id'],))
+                    result = queryMySQL("SELECT twitterID FROM twitter_spammers WHERE twitterID=%s", (tweet['user']['id'],))
                     if len(result) == 0:
                         print('USER NOT IN SPAM LIST')
-                        result = queryMySQL("SELECT twitterID FROM crypto_users WHERE twitterID=%s", (tweet['user']['id'],))
+                        result = queryMySQL("SELECT twitterID FROM twitter_users WHERE twitterID=%s", (tweet['user']['id'],))
 
                         tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
 
@@ -268,7 +242,7 @@ class MyListener(StreamListener):
 
                         if len(result) == 0:
                             print('USER NOT IN USERS LIST')
-                            queryMySQL("INSERT INTO crypto_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (tweet['user']['id'], tweet['user']['name'], tweet['user']['screen_name'], tweet['user']['description'], tweet['user']['location'], tweet['user']['time_zone'], tweet['user']['followers_count'], tweet['user']['friends_count']))
+                            queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (tweet['user']['id'], tweet['user']['name'], tweet['user']['screen_name'], tweet['user']['description'], tweet['user']['location'], tweet['user']['time_zone'], tweet['user']['followers_count'], tweet['user']['friends_count']))
 
                     print('')
                     print('')
@@ -303,16 +277,6 @@ class MyListener(StreamListener):
         print(status)
         return False
 
-
-#keywords = getAllColumns()
-#keywords = getMostPopular(400)
-
-#print(sorted(data.items(), key=lambda x:x[1], reverse=True))
-#print(data)
-
-#queryMySQL("ALTER TABLE trends DROP $crypto")
-#queryMySQL("ALTER TABLE trends ADD $crypto INT(10) UNSIGNED NOT NULL DEFAULT 0")
-#queryMySQL("ALTER TABLE trends ALTER COLUMN $crypto SET DEFAULT 0")
 hashList = []
 print(coins['list'])
 auth = OAuthHandler(consumer_key, consumer_secret)

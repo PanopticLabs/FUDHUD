@@ -12,7 +12,7 @@ with open('cred.json') as json_cred:
 mysql_user = cred["mysql_user"]
 mysql_pass = cred["mysql_pass"]
 mysql_host = cred["mysql_host"]
-mysql_db = cred["mysql_reddit_db"]
+mysql_db = 'panoptic_fudhud'
 
 connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
                               host=mysql_host,
@@ -75,11 +75,11 @@ def getCoins():
         shitlist = ['pay', 'sub', 'part', 'fun']
         if symbol in shitlist:
             coin_list.append(name)
-            coin_dict[topic] = [name]
+            coin_dict[symbol] = [name]
         else:
             coin_list.append(name)
             coin_list.append(symbol)
-            coin_dict[topic] = [name, symbol]
+            coin_dict[symbol] = [name, symbol]
         #print(cryptos)
 
     coins['list'] = coin_list
@@ -125,13 +125,13 @@ def stream():
                 else:
                     subreddits = subreddits + '+' + name
 
-                result = queryMySQL("SELECT subredditID FROM crypto_subreddits WHERE url=%s", (subreddit,))
+                result = queryMySQL("SELECT subredditID FROM reddit_subreddits WHERE url=%s", (subreddit,))
                 if len(result) == 0:
-                    subredditID = queryMySQL("INSERT INTO crypto_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,topic))
+                    subredditID = queryMySQL("INSERT INTO reddit_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,topic))
                 else:
                     for row in result:
                         subredditID = row['subredditID']
-                        queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
+                        queryMySQL("UPDATE reddit_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
 
         #print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
@@ -155,29 +155,29 @@ def stream():
                 print(sentiment)
                 print('')
 
-                user_result = queryMySQL("SELECT userID FROM crypto_users WHERE name=%s", (comment_author, ))
+                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (comment_author, ))
                 if len(user_result) == 0:
-                    comment_userID = queryMySQL("INSERT INTO crypto_users(name, comments) VALUES (%s, %s)", (comment_author, 1))
+                    comment_userID = queryMySQL("INSERT INTO reddit_users(name, comments) VALUES (%s, %s)", (comment_author, 1))
                 else:
                     for row in user_result:
                         comment_userID = row['userID']
-                        queryMySQL("UPDATE crypto_users SET comments=comments+1 WHERE userID=%s",(comment_userID, ))
+                        queryMySQL("UPDATE reddit_users SET comments=comments+1 WHERE userID=%s",(comment_userID, ))
 
-                comment_id = queryMySQL("INSERT INTO crypto_comments(commentUnique, postUnique, parentUnique, userID, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
+                comment_id = queryMySQL("INSERT INTO reddit_comments(commentUnique, postUnique, parentUnique, userID, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
 
                 topics = []
                 for topic in coins['dict']:
                     if any(word in c.split() for word in coins['dict'][topic]):
                         print(topic)
                         topics.append(topic)
-                        result = queryMySQL("SELECT mentionID FROM crypto_mentions WHERE date=%s AND topic=%s", (dt, topic))
+                        result = queryMySQL("SELECT mentionID FROM reddit_mentions WHERE date=%s AND topic=%s", (dt, topic))
                         if len(result) == 0:
-                            mentionID = queryMySQL("INSERT INTO crypto_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
+                            mentionID = queryMySQL("INSERT INTO reddit_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
                         else:
                             for row in result:
                                 mentionID = row['mentionID']
 
-                                result = queryMySQL("SELECT * FROM crypto_mentions WHERE mentionID=%s", (mentionID, ))
+                                result = queryMySQL("SELECT * FROM reddit_mentions WHERE mentionID=%s", (mentionID, ))
                                 for row in result:
                                     wordcount = row['mentions']
                                     totalSentiment = float(row['sentiment']) * wordcount
@@ -185,7 +185,7 @@ def stream():
                                     wordcount += 1
                                     newSentiment = totalSentiment / wordcount
 
-                                    queryMySQL("UPDATE crypto_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
+                                    queryMySQL("UPDATE reddit_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
 
                 print('NOTIFYING!')
                 commentObj = {'service' : 'redditstream', 'author' : comment_author, 'comment' : comment_body, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'link' : comment_link, 'topics' : topics}

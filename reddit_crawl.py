@@ -12,7 +12,7 @@ with open('cred.json') as json_cred:
 mysql_user = cred["mysql_user"]
 mysql_pass = cred["mysql_pass"]
 mysql_host = cred["mysql_host"]
-mysql_db = cred["mysql_reddit_db"]
+mysql_db = 'panoptic_fudhud'
 
 connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
                               host=mysql_host,
@@ -64,7 +64,7 @@ def getCoins():
     response = urllib.urlopen(url)
     coinmarketcap = json.loads(response.read())
     for coin in coinmarketcap:
-        symbol = '$' + coin['symbol'].lower()
+        symbol = coin['symbol'].lower()
         cryptos.append(symbol)
         #print(cryptos)
 
@@ -100,14 +100,14 @@ def crawl():
                 subreddit = subreddits[i]
                 name = subreddit[25:]
                 #print(name)
-                result = queryMySQL("SELECT subredditID FROM crypto_subreddits WHERE url=%s", (subreddit,))
+                result = queryMySQL("SELECT subredditID FROM reddit_subreddits WHERE url=%s", (subreddit,))
                 if len(result) == 0:
-                    subredditID = queryMySQL("INSERT INTO crypto_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,word))
+                    subredditID = queryMySQL("INSERT INTO reddit_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,word))
                 else:
                     for row in result:
                         subredditID = row['subredditID']
-                        queryMySQL("UPDATE crypto_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
-                        
+                        queryMySQL("UPDATE reddit_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
+
                 #json_about = getJSON(subreddit + "/about")
                 s = reddit.subreddit(name)
                 try:
@@ -135,14 +135,14 @@ def crawl():
                             new_posts += 1
 
                     #print("New Posts: %s" % str(new_posts))
-                    result = queryMySQL("SELECT activityID FROM crypto_activity WHERE datetime=%s AND subredditID=%s", (dt, subredditID))
+                    result = queryMySQL("SELECT activityID FROM reddit_activity WHERE datetime=%s AND subredditID=%s", (dt, subredditID))
                     if len(result) == 0:
-                        activityID = queryMySQL("INSERT INTO crypto_activity(subredditID, datetime, subscribers, activeAccounts, newPosts) VALUES (%s, %s, %s, %s, %s)", (subredditID, dt, subscribers, active_accounts, new_posts))
+                        activityID = queryMySQL("INSERT INTO reddit_activity(subredditID, datetime, subscribers, activeAccounts, newPosts) VALUES (%s, %s, %s, %s, %s)", (subredditID, dt, subscribers, active_accounts, new_posts))
                     else:
                         for row in result:
                             activityID = row['activityID']
 
-                        queryMySQL("UPDATE crypto_activity SET subscribers=%s, activeAccounts=%s, newPosts=%s WHERE activityID=%s", (subscribers, active_accounts, new_posts, activityID))
+                        queryMySQL("UPDATE reddit_activity SET subscribers=%s, activeAccounts=%s, newPosts=%s WHERE activityID=%s", (subscribers, active_accounts, new_posts, activityID))
 
                     fp_sentiment = 0
                     fp_count = 0
@@ -161,7 +161,7 @@ def crawl():
                             #print(post_unique)
                             post_url = "https://www.reddit.com" + post.permalink
                             #print(post_url)
-                            result = queryMySQL("SELECT postID, postSentiment FROM crypto_posts WHERE postUnique=%s", (post_unique, ))
+                            result = queryMySQL("SELECT postID, postSentiment FROM reddit_posts WHERE postUnique=%s", (post_unique, ))
                             if len(result) == 0:
                                 post_title = post.title
                                 post_title = strip_non_ascii(post_title)
@@ -170,9 +170,9 @@ def crawl():
                                 #print(post_author)
                                 post_time = post.created_utc
                                 #print(post_time)
-                                user_result = queryMySQL("SELECT userID FROM crypto_users WHERE name=%s", (post_author, ))
+                                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (post_author, ))
                                 if len(user_result) == 0:
-                                    post_userID = queryMySQL("INSERT INTO crypto_users(name) VALUES (%s)", (post_author, ))
+                                    post_userID = queryMySQL("INSERT INTO reddit_users(name) VALUES (%s)", (post_author, ))
                                 else:
                                     for row in user_result:
                                         post_userID = row['userID']
@@ -197,7 +197,7 @@ def crawl():
 
                                 #print(post_text)
 
-                                post_id = queryMySQL("INSERT INTO crypto_posts(postUnique,subredditID, userID, unix, title, content, postSentiment) VALUES(%s, %s, %s, %s, %s, %s, %s)", (post_unique, subredditID, post_userID, post_time, post_title, post_text, post_sentiment))
+                                post_id = queryMySQL("INSERT INTO reddit_posts(postUnique,subredditID, userID, unix, title, content, postSentiment) VALUES(%s, %s, %s, %s, %s, %s, %s)", (post_unique, subredditID, post_userID, post_time, post_title, post_text, post_sentiment))
                             else:
                                 for row in result:
                                     post_id = row['postID']
@@ -215,22 +215,7 @@ def crawl():
                             #print(post_crossposts)
                             #print('')
 
-                            #comments = getJSON(post_url)
-                            #comments = s.comments
-                            #crawlComments(comments, post_unique, post_unique)
-
-                            #queryMySQL("UPDATE crypto_posts SET comments=%s, score=%s, ups=%s, downs=%s, crossposts=%s, postSentiment=%s, commentSentiment=%s WHERE postID=%s", (post_comments, post_score, post_ups, post_downs, post_crossposts, post_sentiment, avg_sentiment, post_id))
-                            queryMySQL("UPDATE crypto_posts SET comments=%s, score=%s, ups=%s, downs=%s, crossposts=%s, postSentiment=%s WHERE postID=%s", (post_comments, post_score, post_ups, post_downs, post_crossposts, post_sentiment, post_id))
-
-                            #total_sentiment = float(avg_sentiment) * comment_count
-                            #total_sentiment = float(total_sentiment) + (float(post_sentiment) * op_weight)
-                            #comment_count += op_weight
-                            #adjusted_sentiment = float(total_sentiment) / comment_count
-
-                            #total_sentiment = float(fp_sentiment) * fp_count
-                            #total_sentiment = float(total_sentiment) + float(adjusted_sentiment)
-                            #fp_count += 1
-                            #fp_sentiment = float(total_sentiment) / fp_count
+                            queryMySQL("UPDATE reddit_posts SET comments=%s, score=%s, ups=%s, downs=%s, crossposts=%s, postSentiment=%s WHERE postID=%s", (post_comments, post_score, post_ups, post_downs, post_crossposts, post_sentiment, post_id))
 
                             total_sentiment = float(fp_sentiment) * fp_count
                             total_sentiment = float(total_sentiment) + float(post_sentiment)
@@ -238,7 +223,7 @@ def crawl():
                             fp_sentiment = float(total_sentiment) / fp_count
 
 
-                    queryMySQL("UPDATE crypto_activity SET frontpageSentiment=%s WHERE activityID=%s", (fp_sentiment, activityID))
+                    queryMySQL("UPDATE reddit_activity SET frontpageSentiment=%s WHERE activityID=%s", (fp_sentiment, activityID))
 
                 except BaseException as e:
                     #print("Post Error: %s" % str(e))
@@ -283,24 +268,24 @@ def crawlComments(comments, postID, parentID):
             analysis = tb(comment_body)
             sentiment = analysis.sentiment.polarity
 
-            result = queryMySQL("SELECT commentID FROM crypto_comments WHERE commentUnique=%s", (comment_unique, ))
+            result = queryMySQL("SELECT commentID FROM reddit_comments WHERE commentUnique=%s", (comment_unique, ))
             if(len(result) == 0):
                 #print("Post ID: %s" % str(comment_postID))
                 #print("Parent ID: %s" % str(comment_parentID))
-                user_result = queryMySQL("SELECT userID FROM crypto_users WHERE name=%s", (comment_author, ))
+                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (comment_author, ))
                 if len(user_result) == 0:
-                    comment_userID = queryMySQL("INSERT INTO crypto_users(name) VALUES (%s)", (comment_author, ))
+                    comment_userID = queryMySQL("INSERT INTO reddit_users(name) VALUES (%s)", (comment_author, ))
                 else:
                     for row in user_result:
                         comment_userID = row['userID']
 
-                comment_id = queryMySQL("INSERT INTO crypto_comments(commentUnique, postID, parentUnique, userUnique, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
+                comment_id = queryMySQL("INSERT INTO reddit_comments(commentUnique, postID, parentUnique, userUnique, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
 
             else:
                 for row in result:
                     comment_id = row['commentID']
 
-            queryMySQL("UPDATE crypto_comments SET score=%s, ups=%s, downs=%s, controversiality=%s WHERE commentID=%s", (comment_score, comment_ups, comment_downs, comment_controversiality, comment_id))
+            queryMySQL("UPDATE reddit_comments SET score=%s, ups=%s, downs=%s, controversiality=%s WHERE commentID=%s", (comment_score, comment_ups, comment_downs, comment_controversiality, comment_id))
             comment_count = int(comment_count)
             total_sentiment = float(avg_sentiment) * comment_count
             total_sentiment = float(total_sentiment) + float(sentiment)

@@ -149,7 +149,6 @@ class MyListener(StreamListener):
                         #Since the hash isn't in the list, add it to the list
                         hashList.append(textHash)
 
-
                         #print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
@@ -159,17 +158,6 @@ class MyListener(StreamListener):
                         #print(sentiment)
                         #print('')
 
-                        #Check for new words
-                        pattern = r'(?:^|\s)(\$[^\W\d_]+)'
-                        search = re.findall(pattern, strip_non_ascii(tweet['text']))
-                        search = [x.lower() for x in search]
-                        newwords = list(set(search) - set(coins['dict'].keys()))
-                        #print(newwords)
-                        #print('')
-                        #Add the new words to our keyword list
-                        #if (len(keywords) + len(newwords)) < 500:
-                        for newword in newwords:
-                            coins['dict'][newword] = [newword]
                         #Get current date to check against the database and add to each row
                         today = time.strftime('%Y-%m-%d %H:%M:00')
                         #print(today)

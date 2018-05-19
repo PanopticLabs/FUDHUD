@@ -53,8 +53,8 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
-        subject = 'Reddit Crawler SQL Error'
-        mail.sendMail(subject, e)
+        #subject = 'Reddit Crawler SQL Error'
+        #mail.sendMail(subject, e)
         return
 
 def getCoins():

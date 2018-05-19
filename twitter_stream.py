@@ -90,8 +90,8 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
-        subject = 'Twitter SQL Error'
-        mail.sendMail(subject, e)
+        #subject = 'Twitter SQL Error'
+        #mail.sendMail(subject, e)
         return
 
 def notify_node(array):

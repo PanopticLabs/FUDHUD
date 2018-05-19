@@ -16,8 +16,8 @@ destination = [str(cred['receiver_mail'])]
 
 def sendMail(subject, content):
     try:
-        msg = MIMEText(content)
-        msg['Subject']= subject
+        msg = MIMEText(str(content))
+        msg['Subject']= str(subject)
         msg['From'] = sender
 
         conn = SMTP(smtp_server)

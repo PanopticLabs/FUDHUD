@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw
+import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 
@@ -55,8 +55,8 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
-        print('SQL ERROR')
-        print(e)
+        subject = 'Reddit Streamer SQL Error'
+        mail.sendMail(subject, e)
         return
 
 def getCoins():
@@ -64,7 +64,7 @@ def getCoins():
     coins = {}
     coin_list = []
     coin_dict = {}
-    url = 'https://api.coinmarketcap.com/v1/ticker/?limit=100'
+    url = 'https://api.coinmarketcap.com/v1/ticker/?limit=200'
     response = urllib.urlopen(url)
     coinmarketcap = json.loads(response.read())
     for coin in coinmarketcap:
@@ -196,7 +196,9 @@ def stream():
     #except:
         #pass
     except BaseException as e:
-        print("Error on_data: %s" % str(e))
+        subject = 'Reddit Streamer MyListener Error'
+        mail.sendMail(subject, e)
+        #print("Error on_data: %s" % str(e))
 
 while True:
     print('Starting Reddit Stream...')

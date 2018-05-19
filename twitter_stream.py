@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib
+import sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 from tweepy import OAuthHandler
@@ -22,7 +22,7 @@ mysql_db = 'panoptic_fudhud'
 #keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
 #cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
 cryptos = []
-blacklist = set(['accepting new users', 'Binance registration'])
+blacklist = set(['accepting new users', 'Binance registration', 'Register with Binance', 'on Binance with 50% discount trading fee'])
 
 def getCoins():
     #Get coinmarketcap data
@@ -90,8 +90,8 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
-        print('SQL ERROR')
-        print(e)
+        subject = 'Twitter SQL Error'
+        mail.sendMail(subject, e)
         return
 
 def notify_node(array):
@@ -117,7 +117,9 @@ def startStream():
     try:
         twitter_stream = Stream(auth, MyListener())
         twitter_stream.filter(track=coins['list'])
-    except:
+    except Exception as e:
+        subject = 'Twitter Stream Error'
+        mail.sendMail(subject, e)
         pass
 
 
@@ -257,7 +259,9 @@ class MyListener(StreamListener):
             return True
 
         except BaseException as e:
-            print("Error on_data: %s" % str(e))
+            subject = 'Twitter MyListener Error'
+            mail.sendMail(subject, e)
+            #print("Error on_data: %s" % str(e))
 
         return True
 

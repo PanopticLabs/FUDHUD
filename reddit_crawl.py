@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw
+import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 
@@ -53,8 +53,8 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
-        print('SQL ERROR')
-        print(e)
+        subject = 'Reddit Crawler SQL Error'
+        mail.sendMail(subject, e)
         return
 
 def getCoins():
@@ -225,9 +225,9 @@ def crawl():
 
                     queryMySQL("UPDATE reddit_activity SET frontpageSentiment=%s WHERE activityID=%s", (fp_sentiment, activityID))
 
-                except BaseException as e:
-                    #print("Post Error: %s" % str(e))
-                    #print('')
+                except Exception as e:
+                    subject = 'Reddit Post Crawler Error'
+                    mail.sendMail(subject, e)
                     continue
 
                 i += 1
@@ -301,10 +301,9 @@ def crawlComments(comments, postID, parentID):
             #print('')
             #print('')
 
-        except BaseException as e:
-            #print("Comment Error : %s" % str(e))
-            #print(comment["data"])
-            #print('')
+        except Exception as e:
+            subject = 'Reddit Comment Crawler Error'
+            mail.sendMail(subject, e)
             continue
 
         if len(replies) != 0:

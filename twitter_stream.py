@@ -247,8 +247,6 @@ class MyListener(StreamListener):
                     except:
                         pass
 
-
-            print('')
             return True
 
         except BaseException as e:

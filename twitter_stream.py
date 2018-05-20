@@ -125,54 +125,68 @@ def startStream():
 
 class MyListener(StreamListener):
     def on_data(self, data):
+        count = 0
         try:
-            print("Starting...")
+            #print("Starting...")
             tweet = json.loads(data)
+            count += 1
             #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
-            print("Checking tweet...")
+            #print("Checking tweet...")
             #Check if user is in our spam list
             result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (tweet['user']['screen_name'],))
-            print("1")
+            count += 1
             #If user is not in spam list, continue
             if len(result) == 0:
-                print("2")
+                count += 1
                 status_link = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
-                print("3")
+                count += 1
                 if(tweet['text'].startswith('RT ') is False): #Remove any retweets
-                    print("4")
+                    count += 1
                     #Remove urls from tweet text (tweet urls are unique even if the text is identical)
                     text = re.sub(r"(?:\@|https?\://)\S+", "", tweet['text'])
+                    count += 1
                     #Hash text for comparison
                     textHash = hash(text)
+                    count += 1
                     #Check if hash is in the hash list
                     if (textHash not in hashList) and (not bool(blacklist.intersection(text))):
-                        print("5")
+                        count += 1
                         print("Tweet Passes...")
+                        count += 1
                         #Since the hash isn't in the list, add it to the list
                         hashList.append(textHash)
+                        count += 1
 
                         #print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
 
                         analysis = tb(tweet['text'])
+                        count += 1
                         sentiment = analysis.sentiment.polarity
+                        count += 1
                         #print(sentiment)
                         #print('')
 
                         #Get current date to check against the database and add to each row
                         today = time.strftime('%Y-%m-%d %H:%M:00')
+                        count += 1
                         #print(today)
                         #Start count of topics mentioned, which deterimines whether a user gets added to spam
                         topicCount = 0;
+                        count += 1
                         topicLimit = 5;
+                        count += 1
 
                         topics = []
+                        count += 1
                         t = tweet['text'].lower()
+                        count += 1
                         for topic in coins['dict']:
+                            count += 1
                             if any(word in t.split() for word in coins['dict'][topic]):
                                 #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
-                                print(topic)
+                                #print(topic)
                                 topicCount += 1
                                 topics.append(topic)
 
@@ -240,19 +254,22 @@ class MyListener(StreamListener):
 
                 #if tweet is a retweet
                 else:
-                    print('RETWEET')
-                    #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
-                    topics = []
-                    t = tweet['retweeted_status']['text'].lower()
-                    for topic in coins['dict']:
-                        if any(word in t.split() for word in coins['dict'][topic]):
-                            #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
-                            #print(topic)
-                            topics.append(topic)
+                    try:
+                        print('RETWEET')
+                        #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
+                        topics = []
+                        t = tweet['retweeted_status']['text'].lower()
+                        for topic in coins['dict']:
+                            if any(word in t.split() for word in coins['dict'][topic]):
+                                #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
+                                #print(topic)
+                                topics.append(topic)
 
-                    tweetObj = {'service' : 'tweetstream', 'name' : tweet['retweeted_status']['user']['name'], 'screen_name'  : tweet['retweeted_status']['user']['screen_name'], 'pic' : tweet['retweeted_status']['user']['profile_image_url'], 'tweet' : tweet['retweeted_status']['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : tweet['retweeted_status']['retweet_count'], 'fav_count' : tweet['retweeted_status']['favorite_count'], 'topics' : topics}
-                    print(json.dumps(tweetObj, indent=4, separators=(',', ': ')))
-                    notify_node(tweetObj)
+                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['retweeted_status']['user']['name'], 'screen_name'  : tweet['retweeted_status']['user']['screen_name'], 'pic' : tweet['retweeted_status']['user']['profile_image_url'], 'tweet' : tweet['retweeted_status']['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : tweet['retweeted_status']['retweet_count'], 'fav_count' : tweet['retweeted_status']['favorite_count'], 'topics' : topics}
+                        #print(json.dumps(tweetObj, indent=4, separators=(',', ': ')))
+                        notify_node(tweetObj)
+                    except:
+                        pass
 
 
             print('')
@@ -260,7 +277,8 @@ class MyListener(StreamListener):
 
         except BaseException as e:
             subject = 'Twitter MyListener Error'
-            mail.sendMail(subject, e)
+            content = 'Count ' + str(count) + ': ' + str(e)
+            mail.sendMail(subject, content)
             #print("Error on_data: %s" % str(e))
 
         return True

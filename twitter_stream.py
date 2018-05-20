@@ -128,7 +128,7 @@ class MyListener(StreamListener):
     def on_data(self, data):
         try:
             tweet = json.loads(data)
-            #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
+            print(json.dumps(tweet, indent=4, separators=(',', ': ')))
 
             #Check if user is in our spam list
             result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (tweet['user']['screen_name'],))
@@ -250,8 +250,8 @@ class MyListener(StreamListener):
             return True
 
         except BaseException as e:
-            subject = 'Twitter MyListener Error'
-            mail.sendMail(subject, e)
+            subject = 'Twitter MyListener Error: ' + str(e)
+            mail.sendMail(subject, json.dumps(tweet, indent=4, separators=(',', ': ')))
             #print("Error on_data: %s" % str(e))
 
         return True

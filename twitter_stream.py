@@ -250,8 +250,12 @@ class MyListener(StreamListener):
             return True
 
         except BaseException as e:
-            subject = 'Twitter MyListener Error: ' + str(e)
-            mail.sendMail(subject, json.dumps(tweet, indent=4, separators=(',', ': ')))
+            if str(e) == 'MySQL Connection not available.':
+                mail.sendMail('Twitter MyListener Error: MySQL Connection not available.','Restarting Twitter Stream...')
+                return False
+            else:
+                subject = 'Twitter MyListener Error: ' + str(e)
+                mail.sendMail(subject, json.dumps(tweet, indent=4, separators=(',', ': ')))
             #print("Error on_data: %s" % str(e))
 
         return True

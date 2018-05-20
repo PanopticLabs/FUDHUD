@@ -90,6 +90,7 @@ def queryMySQL(query, variables=None):
             return result
     except:
         e = sys.exc_info()
+        print(e)
         #subject = 'Twitter SQL Error'
         #mail.sendMail(subject, e)
         return
@@ -125,65 +126,45 @@ def startStream():
 
 class MyListener(StreamListener):
     def on_data(self, data):
-        count = 0
         try:
-            #print("Starting...")
             tweet = json.loads(data)
-            count += 1
             #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
-            #print("Checking tweet...")
+
             #Check if user is in our spam list
             result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (tweet['user']['screen_name'],))
-            count += 1
             #If user is not in spam list, continue
             if len(result) == 0:
-                count += 1
                 status_link = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
-                count += 1
                 if(tweet['text'].startswith('RT ') is False): #Remove any retweets
-                    count += 1
                     #Remove urls from tweet text (tweet urls are unique even if the text is identical)
                     text = re.sub(r"(?:\@|https?\://)\S+", "", tweet['text'])
-                    count += 1
                     #Hash text for comparison
                     textHash = hash(text)
-                    count += 1
                     #Check if hash is in the hash list
                     if (textHash not in hashList) and (not bool(blacklist.intersection(text))):
-                        count += 1
-                        print("Tweet Passes...")
-                        count += 1
+                        #print("Tweet Passes...")
+
                         #Since the hash isn't in the list, add it to the list
                         hashList.append(textHash)
-                        count += 1
 
                         #print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
 
                         analysis = tb(tweet['text'])
-                        count += 1
                         sentiment = analysis.sentiment.polarity
-                        count += 1
                         #print(sentiment)
-                        #print('')
 
                         #Get current date to check against the database and add to each row
                         today = time.strftime('%Y-%m-%d %H:%M:00')
-                        count += 1
                         #print(today)
                         #Start count of topics mentioned, which deterimines whether a user gets added to spam
                         topicCount = 0;
-                        count += 1
                         topicLimit = 5;
-                        count += 1
 
                         topics = []
-                        count += 1
                         t = tweet['text'].lower()
-                        count += 1
                         for topic in coins['dict']:
-                            count += 1
                             if any(word in t.split() for word in coins['dict'][topic]):
                                 #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
                                 #print(topic)
@@ -215,8 +196,7 @@ class MyListener(StreamListener):
                         if topicCount > topicLimit:
                             #Add user to spam list
                             queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
-                            print('USER ADDED TO SPAM LIST FOR TOO MANY TOPICS')
-                            print('')
+                            #print('USER ADDED TO SPAM LIST FOR TOO MANY TOPICS')
 
                         #with open('python.json', 'a') as f:
                             #f.write(data)
@@ -226,17 +206,15 @@ class MyListener(StreamListener):
                     else:
                         #Add user to spam list
                         queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
-                        print('USER ' + tweet['user']['screen_name'] + ' ADDED TO SPAM LIST FOR REPEAT TWEET: ' + tweet['text'])
-                        print('')
+                        #print('USER ' + tweet['user']['screen_name'] + ' ADDED TO SPAM LIST FOR REPEAT TWEET: ' + tweet['text'])
 
                     result = queryMySQL("SELECT twitterID FROM twitter_spammers WHERE twitterID=%s", (tweet['user']['id'],))
                     if len(result) == 0:
-                        print('USER NOT IN SPAM LIST')
+                        #print('USER NOT IN SPAM LIST')
                         result = queryMySQL("SELECT twitterID FROM twitter_users WHERE twitterID=%s", (tweet['user']['id'],))
 
                         tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
 
-                        #print(tweet['entities'])
                         if 'media' in tweet['entities']:
                             tweetMedia = tweet['entities']['media'][0]['media_url_https']
                             #print(tweet['entities']['media'][0]['media_url_https'])
@@ -245,17 +223,15 @@ class MyListener(StreamListener):
                         notify_node(tweetObj)
 
                         if len(result) == 0:
-                            print('USER NOT IN USERS LIST')
                             queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (tweet['user']['id'], tweet['user']['name'], tweet['user']['screen_name'], tweet['user']['description'], tweet['user']['location'], tweet['user']['time_zone'], tweet['user']['followers_count'], tweet['user']['friends_count']))
+                            #print('USER NOT IN USERS LIST')
 
-                    print('')
-                    print('')
                     return True
 
                 #if tweet is a retweet
                 else:
                     try:
-                        print('RETWEET')
+                        #print('RETWEET')
                         #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
                         topics = []
                         t = tweet['retweeted_status']['text'].lower()
@@ -277,8 +253,7 @@ class MyListener(StreamListener):
 
         except BaseException as e:
             subject = 'Twitter MyListener Error'
-            content = 'Count ' + str(count) + ': ' + str(e)
-            mail.sendMail(subject, content)
+            mail.sendMail(subject, e)
             #print("Error on_data: %s" % str(e))
 
         return True
@@ -294,5 +269,6 @@ auth.set_access_token(access_token, access_secret)
 
 while True:
     startStream()
-    print('Restarting Twitter Stream...')
+
+    mail.sendMail('Twitter Restart','Restarting Twitter Stream...')
     time.sleep(60)

@@ -129,12 +129,17 @@ class MyListener(StreamListener):
         try:
             tweet = json.loads(data)
             #print(json.dumps(tweet, indent=4, separators=(',', ': ')))
+            try:
+                user = tweet['user']
+            except:
+                print('No user!')
+                return False
 
             #Check if user is in our spam list
-            result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (tweet['user']['screen_name'],))
+            result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (user['screen_name'],))
             #If user is not in spam list, continue
             if len(result) == 0:
-                status_link = 'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+                status_link = 'https://twitter.com/' + user['screen_name'] + '/status/' + str(tweet['id'])
                 if(tweet['text'].startswith('RT ') is False): #Remove any retweets
                     #Remove urls from tweet text (tweet urls are unique even if the text is identical)
                     text = re.sub(r"(?:\@|https?\://)\S+", "", tweet['text'])
@@ -147,8 +152,8 @@ class MyListener(StreamListener):
                         #Since the hash isn't in the list, add it to the list
                         hashList.append(textHash)
 
-                        #print(json.dumps(tweet['user']['name'], indent=4, separators=(',', ': ')))
-                        #print(json.dumps(tweet['user']['screen_name'], indent=4, separators=(',', ': ')))
+                        #print(json.dumps(user['name'], indent=4, separators=(',', ': ')))
+                        #print(json.dumps(user['screen_name'], indent=4, separators=(',', ': ')))
                         #print(json.dumps(tweet['text'], indent=4, separators=(',', ': ')))
 
                         analysis = tb(tweet['text'])
@@ -195,7 +200,7 @@ class MyListener(StreamListener):
 
                         if topicCount > topicLimit:
                             #Add user to spam list
-                            queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
+                            queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (user['id'], user['screen_name']))
                             #print('USER ADDED TO SPAM LIST FOR TOO MANY TOPICS')
 
                         #with open('python.json', 'a') as f:
@@ -205,15 +210,15 @@ class MyListener(StreamListener):
 
                     else:
                         #Add user to spam list
-                        queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (tweet['user']['id'], tweet['user']['screen_name']))
-                        #print('USER ' + tweet['user']['screen_name'] + ' ADDED TO SPAM LIST FOR REPEAT TWEET: ' + tweet['text'])
+                        queryMySQL("INSERT INTO twitter_spammers (twitterID, name) VALUES (%s, %s)", (user['id'], user['screen_name']))
+                        #print('USER ' + user['screen_name'] + ' ADDED TO SPAM LIST FOR REPEAT TWEET: ' + tweet['text'])
 
-                    result = queryMySQL("SELECT twitterID FROM twitter_spammers WHERE twitterID=%s", (tweet['user']['id'],))
+                    result = queryMySQL("SELECT twitterID FROM twitter_spammers WHERE twitterID=%s", (user['id'],))
                     if len(result) == 0:
                         #print('USER NOT IN SPAM LIST')
-                        result = queryMySQL("SELECT twitterID FROM twitter_users WHERE twitterID=%s", (tweet['user']['id'],))
+                        result = queryMySQL("SELECT twitterID FROM twitter_users WHERE twitterID=%s", (user['id'],))
 
-                        tweetObj = {'service' : 'tweetstream', 'name' : tweet['user']['name'], 'screen_name'  : tweet['user']['screen_name'], 'pic' : tweet['user']['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
+                        tweetObj = {'service' : 'tweetstream', 'name' : user['name'], 'screen_name'  : user['screen_name'], 'pic' : user['profile_image_url'], 'tweet' : tweet['text'].encode("utf-8"), 'link' : status_link, 'rt_count' : '0', 'fav_count' : '0', 'topics' : topics}
 
                         if 'media' in tweet['entities']:
                             tweetMedia = tweet['entities']['media'][0]['media_url_https']
@@ -223,7 +228,7 @@ class MyListener(StreamListener):
                         notify_node(tweetObj)
 
                         if len(result) == 0:
-                            queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (tweet['user']['id'], tweet['user']['name'], tweet['user']['screen_name'], tweet['user']['description'], tweet['user']['location'], tweet['user']['time_zone'], tweet['user']['followers_count'], tweet['user']['friends_count']))
+                            queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (user['id'], user['name'], user['screen_name'], user['description'], user['location'], user['time_zone'], user['followers_count'], user['friends_count']))
                             #print('USER NOT IN USERS LIST')
 
                     return True

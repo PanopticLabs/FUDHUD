@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib, mail
+import sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib, mail, subprocess
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 from tweepy import OAuthHandler
@@ -256,7 +256,9 @@ class MyListener(StreamListener):
 
         except BaseException as e:
             if str(e) == 'MySQL Connection not available.':
-                mail.sendMail('Twitter MyListener Error: MySQL Connection not available.','Restarting Twitter Stream...')
+                mail.sendMail('Twitter MyListener Error: MySQL Connection not available.','Restarting MySQL and Twitter Stream...')
+                #Reset MySQL Connection
+                subprocess.call('service mysql restart')
                 return False
             else:
                 subject = 'Twitter MyListener Error: ' + str(e)

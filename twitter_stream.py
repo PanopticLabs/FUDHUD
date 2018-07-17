@@ -118,6 +118,9 @@ def startStream():
     try:
         twitter_stream = Stream(auth, MyListener())
         twitter_stream.filter(track=coins['list'])
+    except IncompleteRead:
+        # Oh well, reconnect and keep trucking
+        continue
     except Exception as e:
         subject = 'Twitter Stream Error'
         mail.sendMail(subject, e)

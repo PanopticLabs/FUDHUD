@@ -43,16 +43,18 @@ def getCoins():
         #Check that symbol does not use an ambiguous word
         shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky', 'link', 'elf', 'waves']
         if symbol in shitlist:
-            coin_list.append(hashname)
-            coin_list.append(symname)
+            #coin_list.append(hashname)
+            #coin_list.append(symname)
             coin_list.append(topic)
-            coin_dict[symbol] = [hashname, symname, topic]
+            #coin_dict[symbol] = [hashname, symname, topic]
+            coin_dict[symbol] = [topic]
         else:
-            coin_list.append(hashname)
-            coin_list.append(symname)
+            #coin_list.append(hashname)
+            #coin_list.append(symname)
             coin_list.append(topic)
-            coin_list.append(hashsym)
-            coin_dict[symbol] = [hashname, symname, topic, hashsym]
+            #coin_list.append(hashsym)
+            #coin_dict[symbol] = [hashname, symname, topic, hashsym]
+            coin_dict[symbol] = [topic]
         #print(cryptos)
 
     coins['list'] = coin_list
@@ -67,7 +69,8 @@ coins = getCoins()
 #
 connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
                               host=mysql_host,
-                              database=mysql_db)
+                              database=mysql_db,
+                              charset='utf8mb4')
 
 dbwords = []
 
@@ -118,9 +121,9 @@ def startStream():
     try:
         twitter_stream = Stream(auth, MyListener())
         twitter_stream.filter(track=coins['list'])
-    except IncompleteRead:
+    #except IncompleteRead:
         # Oh well, reconnect and keep trucking
-        continue
+        #continue
     except Exception as e:
         subject = 'Twitter Stream Error'
         mail.sendMail(subject, e)
@@ -231,7 +234,7 @@ class MyListener(StreamListener):
                         notify_node(tweetObj)
 
                         if len(result) == 0:
-                            queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (user['id'], user['name'], user['screen_name'], user['description'], user['location'], user['time_zone'], user['followers_count'], user['friends_count']))
+                            queryMySQL("INSERT INTO twitter_users (twitterID, name, screenName, description, location, timezone, followers, friends) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (user['id'], strip_non_ascii(user['name']), strip_non_ascii(user['screen_name']), strip_non_ascii(user['description']), user['location'], user['time_zone'], user['followers_count'], user['friends_count']))
                             #print('USER NOT IN USERS LIST')
 
                     return True
@@ -263,9 +266,9 @@ class MyListener(StreamListener):
                 #Reset MySQL Connection
                 subprocess.call('service mysql restart')
                 return False
-            else:
-                subject = 'Twitter MyListener Error: ' + str(e)
-                mail.sendMail(subject, json.dumps(tweet, indent=4, separators=(',', ': ')))
+            #else:
+                #subject = 'Twitter MyListener Error: ' + str(e)
+                #mail.sendMail(subject, json.dumps(tweet, indent=4, separators=(',', ': ')))
             #print("Error on_data: %s" % str(e))
 
         return True

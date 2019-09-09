@@ -1,12 +1,17 @@
 #!/usr/bin/env python
-import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
+import os, sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 
 #################################################################################
+#Get relative path###############################################################
+#################################################################################
+script_dir = os.path.dirname(__file__)
+
+#################################################################################
 #Setup MySQL connection##########################################################
 #################################################################################
-with open('cred.json') as json_cred:
+with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
 mysql_user = cred["mysql_user"]

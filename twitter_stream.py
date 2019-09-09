@@ -1,12 +1,20 @@
 #!/usr/bin/env python
-import sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib, mail, subprocess
+import os, sys, tweepy, textblob, json, re, time, mysql.connector, requests, urllib, mail, subprocess
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy.streaming import StreamListener
 
-with open('cred.json') as json_cred:
+#################################################################################
+#Get relative path###############################################################
+#################################################################################
+script_dir = os.path.dirname(__file__)
+
+#################################################################################
+#Retrieve authentication variables###############################################
+#################################################################################
+with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
 consumer_key = cred['consumer_key']
@@ -19,10 +27,14 @@ mysql_pass = cred['mysql_pass']
 mysql_host = cred['mysql_host']
 mysql_db = 'panoptic_fudhud'
 
-#keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
-#cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
-cryptos = []
-blacklist = set(['accepting new users', 'Binance registration', 'Register with Binance', 'on Binance with 50% discount trading fee'])
+#################################################################################
+#Setup MySQL connection##########################################################
+#################################################################################
+connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
+                              host=mysql_host,
+                              database=mysql_db,
+                              charset='utf8mb4')
+
 
 def getCoins():
     #Get coinmarketcap data
@@ -37,9 +49,9 @@ def getCoins():
         name = name.replace(" ", "")
         symbol = coin['symbol'].lower()
         topic = '$' + symbol
-        hashsym = '#' + symbol
-        symname = '$' + name
-        hashname = '#' + name
+        #hashsym = '#' + symbol
+        #symname = '$' + name
+        #hashname = '#' + name
         #Check that symbol does not use an ambiguous word
         shitlist = ['pay', 'sub', 'part', 'fun', 'bts', 'act', 'sky', 'link', 'elf', 'waves']
         if symbol in shitlist:
@@ -60,19 +72,6 @@ def getCoins():
     coins['list'] = coin_list
     coins['dict'] = coin_dict
     return coins
-
-
-coins = getCoins()
-
-#
-#Setup MySQL connection
-#
-connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
-                              host=mysql_host,
-                              database=mysql_db,
-                              charset='utf8mb4')
-
-dbwords = []
 
 def queryMySQL(query, variables=None):
     conn = connection.cursor(dictionary=True, buffered=True)
@@ -277,7 +276,13 @@ class MyListener(StreamListener):
         print(status)
         return False
 
+#keywords = ['$btc', '$xbt', '$eth', '$omg', '$ltc', '$xmr', '$xrp', '$zec', '$xem', '$gnt', '$zrx', '$sc', '$fct', '$maid', '$gno', '$cvc', '$dcr', '$amp', '$rep']
+#cryptos = ['$mod', '$salt', '$xel', '$miota', '$iota', '$cnd', '$neo', '$omg', '$wtc', '$bat', '$ark', '$lkk', '$cvc', '$fct', '$gtn', '$maid', '$storj', '$knc', '$zrx', '$eth', '$btc', '$gno', '$rep', '$sc', '$xmr', '$xem', '$ltc', '$zec', '$str']
+cryptos = []
+coins = getCoins()
+dbwords = []
 hashList = []
+blacklist = set(['accepting new users', 'Binance registration', 'Register with Binance', 'on Binance with 50% discount trading fee'])
 print(coins['list'])
 auth = OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_secret)

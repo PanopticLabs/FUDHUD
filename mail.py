@@ -6,7 +6,15 @@ import re
 from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
 
-with open('cred.json') as json_cred:
+#################################################################################
+#Get relative path###############################################################
+#################################################################################
+script_dir = os.path.dirname(__file__)
+
+#################################################################################
+#Retrieve authentication variables###############################################
+#################################################################################
+with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
 smtp_server = str(cred['smtp_server'])

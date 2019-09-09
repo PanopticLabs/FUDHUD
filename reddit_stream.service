@@ -1,0 +1,11 @@
+[Unit]
+Description=reddit streaming daemon
+
+[Service]
+ExecStart=/usr/bin/python /root/panoptic/fudhud/reddit_stream.py
+Restart=always
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

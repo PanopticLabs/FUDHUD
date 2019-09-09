@@ -1,0 +1,11 @@
+[Unit]
+Description=twitter streaming daemon
+
+[Service]
+ExecStart=/usr/bin/python /root/panoptic/fudhud/twitter_stream.py
+Restart=always
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

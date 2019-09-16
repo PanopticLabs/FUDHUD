@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
+import os, sys, json, re, time, calendar, requests, urllib, praw, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 
@@ -10,21 +10,17 @@ script_path = os.path.abspath(__file__)
 script_dir = os.path.split(script_path)[0]
 
 #################################################################################
-#Setup MySQL connection##########################################################
+#Retrieve authentication variables###############################################
 #################################################################################
 with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
-mysql_user = cred["mysql_user"]
-mysql_pass = cred["mysql_pass"]
-mysql_host = cred["mysql_host"]
-mysql_db = 'panoptic_fudhud'
+#################################################################################
+#Setup Panoptic API##############################################################
+#################################################################################
+panoptic_token = cred['panoptic_token']
+panoptic_url = 'http://localhost/panoptic.io/api/fudhud/'
 
-connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
-                              host=mysql_host,
-                              database=mysql_db,
-                              use_unicode=True,
-                              charset="utf8")
 #################################################################################
 #Setup Reddit connection##########################################################
 #################################################################################
@@ -36,34 +32,13 @@ reddit_secret = cred["reddit_secret"]
 
 reddit = praw.Reddit(user_agent=reddit_useragent,
                  client_id=reddit_id, client_secret=reddit_secret)
+
 #################################################################################
 #################################################################################
 #################################################################################
 
 avg_sentiment = 0
 comment_count = 0
-
-def queryMySQL(query, variables=None):
-    conn = connection.cursor(dictionary=True, buffered=True)
-    try:
-        if variables is None:
-            conn.execute(query)
-        else:
-            conn.execute(query, variables)
-
-        try:
-            result = conn.fetchall()
-            connection.commit()
-            return result
-        except:
-            result = conn.lastrowid
-            connection.commit()
-            return result
-    except:
-        e = sys.exc_info()
-        #subject = 'Reddit Streamer SQL Error'
-        #mail.sendMail(subject, e)
-        return
 
 def getCoins():
     #Get coinmarketcap data
@@ -115,7 +90,7 @@ def notify_node(array):
 def stream():
     try:
         #Retrieve URLs from JSON#########################################################
-        with open("links.json") as json_links:
+        with open(os.path.join(script_dir, 'links.json')) as json_links:
             links = json.load(json_links)
             reddit_links = links["reddit"]
         #################################################################################
@@ -131,13 +106,7 @@ def stream():
                 else:
                     subreddits = subreddits + '+' + name
 
-                result = queryMySQL("SELECT subredditID FROM reddit_subreddits WHERE url=%s", (subreddit,))
-                if len(result) == 0:
-                    subredditID = queryMySQL("INSERT INTO reddit_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,topic))
-                else:
-                    for row in result:
-                        subredditID = row['subredditID']
-                        queryMySQL("UPDATE reddit_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
+                requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : topic, 'token' : panoptic_token}).json()['message']
 
         #print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
@@ -145,7 +114,7 @@ def stream():
             dt = time.strftime('%Y-%m-%d %H:%M:00')
 
             comment_body = strip_non_ascii(comment.body)
-            print(comment_body)
+            #print(comment_body)
             #print(dir(comment))
             c = comment_body.lower()
             if any(word in c.split() for word in coins['list']):
@@ -158,53 +127,35 @@ def stream():
 
                 analysis = tb(comment_body)
                 sentiment = analysis.sentiment.polarity
-                print(sentiment)
-                print('')
+                #print(sentiment)
 
-                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (comment_author, ))
-                if len(user_result) == 0:
-                    comment_userID = queryMySQL("INSERT INTO reddit_users(name, comments) VALUES (%s, %s)", (comment_author, 1))
-                else:
-                    for row in user_result:
-                        comment_userID = row['userID']
-                        queryMySQL("UPDATE reddit_users SET comments=comments+1 WHERE userID=%s",(comment_userID, ))
+                redditor = reddit.redditor(comment_author)
 
-                comment_id = queryMySQL("INSERT INTO reddit_comments(commentUnique, postUnique, parentUnique, userID, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
+                userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'commentkarma' : str(redditor.comment_karma), 'linkkarma' : str(redditor.link_karma), 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                #print(userID)
+                requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
 
                 topics = []
                 for topic in coins['dict']:
                     if any(word in c.split() for word in coins['dict'][topic]):
-                        print(topic)
+                        #print(topic)
+                        print('')
                         topics.append(topic)
-                        result = queryMySQL("SELECT mentionID FROM reddit_mentions WHERE date=%s AND topic=%s", (dt, topic))
-                        if len(result) == 0:
-                            mentionID = queryMySQL("INSERT INTO reddit_mentions (date, topic, mentions, sentiment) VALUES (%s, %s, %s, %s)", (dt, topic, 1, sentiment))
-                        else:
-                            for row in result:
-                                mentionID = row['mentionID']
+                        #Post mention to api
+                        requests.post(panoptic_url + 'mention', data={'datetime' : dt, 'topic' : topic, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
 
-                                result = queryMySQL("SELECT * FROM reddit_mentions WHERE mentionID=%s", (mentionID, ))
-                                for row in result:
-                                    wordcount = row['mentions']
-                                    totalSentiment = float(row['sentiment']) * wordcount
-                                    totalSentiment = totalSentiment + sentiment
-                                    wordcount += 1
-                                    newSentiment = totalSentiment / wordcount
-
-                                    queryMySQL("UPDATE reddit_mentions SET mentions=%s, sentiment=%s WHERE mentionID=%s", (wordcount, newSentiment, mentionID))
-
-                print('NOTIFYING!')
+                #print('NOTIFYING!')
                 commentObj = {'service' : 'redditstream', 'author' : comment_author, 'comment' : comment_body, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'link' : comment_link, 'topics' : topics}
                 print(commentObj)
                 notify_node(commentObj)
-                print('NOTIFIED!!')
+                #print('NOTIFIED!!')
 
     #except:
         #pass
     except BaseException as e:
         subject = 'Reddit Streamer MyListener Error'
-        mail.sendMail(subject, e)
-        #print("Error on_data: %s" % str(e))
+        #mail.sendMail(subject, e)
+        print("Error on_data: %s" % str(e))
 
 while True:
     print('Starting Reddit Stream...')

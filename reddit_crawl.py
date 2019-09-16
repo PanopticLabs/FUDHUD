@@ -1,61 +1,42 @@
 #!/usr/bin/env python
-import sys, json, re, time, calendar, mysql.connector, requests, urllib, praw, mail
+import os, sys, json, re, time, calendar, requests, urllib, praw, mail
 from textblob import TextBlob as tb
 from datetime import date, timedelta
 
 #################################################################################
-#Setup MySQL connection##########################################################
+#Get relative path###############################################################
 #################################################################################
-with open('cred.json') as json_cred:
+script_path = os.path.abspath(__file__)
+script_dir = os.path.split(script_path)[0]
+
+#################################################################################
+#Retrieve authentication variables###############################################
+#################################################################################
+with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
-mysql_user = cred["mysql_user"]
-mysql_pass = cred["mysql_pass"]
-mysql_host = cred["mysql_host"]
-mysql_db = 'panoptic_fudhud'
+#################################################################################
+#Setup Panoptic API##############################################################
+#################################################################################
+panoptic_token = cred['panoptic_token']
+panoptic_url = 'http://localhost/panoptic.io/api/fudhud/'
 
-connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
-                              host=mysql_host,
-                              database=mysql_db,
-                              use_unicode=True,
-                              charset="utf8")
-#################################################################################
+##################################################################################
 #Setup Reddit connection##########################################################
-#################################################################################
+##################################################################################
 reddit_useragent = cred["reddit_useragent"]
 reddit_id = cred["reddit_id"]
 reddit_secret = cred["reddit_secret"]
 
 reddit = praw.Reddit(user_agent=reddit_useragent,
                  client_id=reddit_id, client_secret=reddit_secret)
+
 #################################################################################
 #################################################################################
 #################################################################################
 
 avg_sentiment = 0
 comment_count = 0
-
-def queryMySQL(query, variables=None):
-    conn = connection.cursor(dictionary=True, buffered=True)
-    try:
-        if variables is None:
-            conn.execute(query)
-        else:
-            conn.execute(query, variables)
-
-        try:
-            result = conn.fetchall()
-            connection.commit()
-            return result
-        except:
-            result = conn.lastrowid
-            connection.commit()
-            return result
-    except:
-        e = sys.exc_info()
-        #subject = 'Reddit Crawler SQL Error'
-        #mail.sendMail(subject, e)
-        return
 
 def getCoins():
     #Get coinmarketcap data
@@ -71,7 +52,6 @@ def getCoins():
     return cryptos
 
 def getJSON(url):
-    time.sleep(2)
     response = requests.get(url, headers = {'User-agent': 'FUDHUD Crawler 0.1'})
     #print(response.headers)
     #print(response.headers['X-Ratelimit-Remaining'])
@@ -86,30 +66,29 @@ def strip_non_ascii(string):
 
 def crawl():
     #Retrieve URLs from JSON#########################################################
-    with open("links.json") as json_links:
+    with open(os.path.join(script_dir, 'links.json')) as json_links:
         links = json.load(json_links)
         reddit_links = links["reddit"]
     #################################################################################
     keywords = getCoins()
-
+    print('1')
     for word in keywords:
+        print('2')
         if word in reddit_links:
+            print('3')
             subreddits = reddit_links[word]
             i = 0
             while i < len(subreddits):
+                print('4')
                 subreddit = subreddits[i]
                 name = subreddit[25:]
                 #print(name)
-                result = queryMySQL("SELECT subredditID FROM reddit_subreddits WHERE url=%s", (subreddit,))
-                if len(result) == 0:
-                    subredditID = queryMySQL("INSERT INTO reddit_subreddits(name,url,topic) VALUES (%s,%s,%s)", (name,subreddit,word))
-                else:
-                    for row in result:
-                        subredditID = row['subredditID']
-                        queryMySQL("UPDATE reddit_subreddits SET name=%s, url=%s WHERE subredditID=%s", (name, subreddit, subredditID))
-
+                subredditID = requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : word, 'token' : panoptic_token}).json()['message']
+                print('Subreddit ID: ' + subredditID)
+                print('5')
                 #json_about = getJSON(subreddit + "/about")
                 s = reddit.subreddit(name)
+                print('6')
                 try:
                     #t0 = time.time() # now (in seconds)
                     dt = time.strftime('%Y-%m-%d %H:00:00', time.gmtime())
@@ -135,34 +114,32 @@ def crawl():
                             new_posts += 1
 
                     #print("New Posts: %s" % str(new_posts))
-                    result = queryMySQL("SELECT activityID FROM reddit_activity WHERE datetime=%s AND subredditID=%s", (dt, subredditID))
-                    if len(result) == 0:
-                        activityID = queryMySQL("INSERT INTO reddit_activity(subredditID, datetime, subscribers, activeAccounts, newPosts) VALUES (%s, %s, %s, %s, %s)", (subredditID, dt, subscribers, active_accounts, new_posts))
-                    else:
-                        for row in result:
-                            activityID = row['activityID']
-
-                        queryMySQL("UPDATE reddit_activity SET subscribers=%s, activeAccounts=%s, newPosts=%s WHERE activityID=%s", (subscribers, active_accounts, new_posts, activityID))
-
+                    print('7')
+                    activityID = requests.post(panoptic_url+'activity', data={'subredditid' : subredditID, 'datetime' : dt, 'subscribers' : subscribers, 'activeaccounts' : active_accounts, 'newposts' : new_posts, 'data' : 'reddit', 'token' : panoptic_token}).json()['message']
+                    print('8')
                     fp_sentiment = 0
                     fp_count = 0
 
                     #posts = json_posts["data"]["children"]
                     for post in s.hot(limit=100):
+                        print('9')
                         if post.stickied == False:
+                            print('10')
                             global comment_count
                             global avg_sentiment
                             comment_count = 0
                             avg_sentiment = 0
                             adjusted_sentiment = 0
                             op_weight = 10 #op_weight is set arbitrarily. It is the importance placed on the sentiment of the original post when calculating the adjusted_sentiment
-
+                            print('11')
                             post_unique = post.id
                             #print(post_unique)
                             post_url = "https://www.reddit.com" + post.permalink
                             #print(post_url)
-                            result = queryMySQL("SELECT postID, postSentiment FROM reddit_posts WHERE postUnique=%s", (post_unique, ))
-                            if len(result) == 0:
+                            result = getJSON(panoptic_url + 'post?data=reddit&post=' + post_unique)['message']
+                            print(result)
+                            if not result:
+                                print('12')
                                 post_title = post.title
                                 post_title = strip_non_ascii(post_title)
                                 #print(post_title)
@@ -170,12 +147,8 @@ def crawl():
                                 #print(post_author)
                                 post_time = post.created_utc
                                 #print(post_time)
-                                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (post_author, ))
-                                if len(user_result) == 0:
-                                    post_userID = queryMySQL("INSERT INTO reddit_users(name) VALUES (%s)", (post_author, ))
-                                else:
-                                    for row in user_result:
-                                        post_userID = row['userID']
+                                post_userID = requests.post(panoptic_url+'user', data={'name' : post_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+
                                 if post.is_self == True:
                                     #print('Selftext')
                                     post_text = post.selftext
@@ -189,6 +162,7 @@ def crawl():
                                     #print('Post Sentiment: %s' % str(post_sentiment))
 
                                 else:
+                                    print('13')
                                     #print('Link')
                                     post_text = post.url
                                     analysis = tb(post_title)
@@ -196,12 +170,12 @@ def crawl():
                                     #print('Post Sentiment: %s' % str(post_sentiment))
 
                                 #print(post_text)
+                                print('14')
+                                post_id = requests.post(panoptic_url + 'post', data={'post' : post_unique, 'subredditid' : subredditID, 'userid' : post_userID, 'unix' : post_time, 'title' : post_title, 'content' : post_text, 'sentiment' : post_sentiment, 'data' : 'reddit', 'token' : panoptic_token})
 
-                                post_id = queryMySQL("INSERT INTO reddit_posts(postUnique,subredditID, userID, unix, title, content, postSentiment) VALUES(%s, %s, %s, %s, %s, %s, %s)", (post_unique, subredditID, post_userID, post_time, post_title, post_text, post_sentiment))
                             else:
-                                for row in result:
-                                    post_id = row['postID']
-                                    post_sentiment = row['postSentiment']
+                                post_id = result['postID']
+                                post_sentiment = result['postSentiment']
 
                             post_comments = post.num_comments
                             #print(post_comments)
@@ -215,19 +189,19 @@ def crawl():
                             #print(post_crossposts)
                             #print('')
 
-                            queryMySQL("UPDATE reddit_posts SET comments=%s, score=%s, ups=%s, downs=%s, crossposts=%s, postSentiment=%s WHERE postID=%s", (post_comments, post_score, post_ups, post_downs, post_crossposts, post_sentiment, post_id))
+                            requests.put(panoptic_url + 'post', data={'postid' : post_id, 'comments' : post_comments, 'score' : post_score, 'ups' : post_ups, 'downs' : post_downs, 'crossposts' : post_crossposts, 'data' : 'reddit', 'token' : panoptic_token})
 
                             total_sentiment = float(fp_sentiment) * fp_count
                             total_sentiment = float(total_sentiment) + float(post_sentiment)
                             fp_count += 1
                             fp_sentiment = float(total_sentiment) / fp_count
 
-
-                    queryMySQL("UPDATE reddit_activity SET frontpageSentiment=%s WHERE activityID=%s", (fp_sentiment, activityID))
+                    requests.put(panoptic_url+'activity', data={'sentiment' : fp_sentiment, 'activityid' : activityID, 'data' : 'reddit', 'token' : panoptic_token})
 
                 except Exception as e:
                     subject = 'Reddit Post Crawler Error'
-                    mail.sendMail(subject, e)
+                    #mail.sendMail(subject, e)
+                    print(e)
                     continue
 
                 i += 1
@@ -268,24 +242,17 @@ def crawlComments(comments, postID, parentID):
             analysis = tb(comment_body)
             sentiment = analysis.sentiment.polarity
 
-            result = queryMySQL("SELECT commentID FROM reddit_comments WHERE commentUnique=%s", (comment_unique, ))
-            if(len(result) == 0):
+            result = getJSON(panoptic_url + 'comment?data=reddit&comment=' + comment_unique)['message']
+
+            if not result:
                 #print("Post ID: %s" % str(comment_postID))
                 #print("Parent ID: %s" % str(comment_parentID))
-                user_result = queryMySQL("SELECT userID FROM reddit_users WHERE name=%s", (comment_author, ))
-                if len(user_result) == 0:
-                    comment_userID = queryMySQL("INSERT INTO reddit_users(name) VALUES (%s)", (comment_author, ))
-                else:
-                    for row in user_result:
-                        comment_userID = row['userID']
-
-                comment_id = queryMySQL("INSERT INTO reddit_comments(commentUnique, postID, parentUnique, userUnique, unix, body, sentiment) VALUES (%s, %s, %s, %s, %s, %s, %s)", (comment_unique, comment_postUnique, comment_parentUnique, comment_userID, comment_time, comment_body, sentiment ))
-
+                comment_userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                comment_id = requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : comment_userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
             else:
-                for row in result:
-                    comment_id = row['commentID']
+                comment_id = result['commentID']
 
-            queryMySQL("UPDATE reddit_comments SET score=%s, ups=%s, downs=%s, controversiality=%s WHERE commentID=%s", (comment_score, comment_ups, comment_downs, comment_controversiality, comment_id))
+            requests.put(panoptic_url+'comment', data={'commentID' : comment_id, 'score' : comment_score, 'ups' : comment_ups, 'downs' : comment_downs, 'controversiality' : comment_controversiality, 'token' : panoptic_token, 'data' : 'reddit'})
             comment_count = int(comment_count)
             total_sentiment = float(avg_sentiment) * comment_count
             total_sentiment = float(total_sentiment) + float(sentiment)
@@ -303,7 +270,8 @@ def crawlComments(comments, postID, parentID):
 
         except Exception as e:
             subject = 'Reddit Comment Crawler Error'
-            mail.sendMail(subject, e)
+            #mail.sendMail(subject, e)
+            print(e)
             continue
 
         if len(replies) != 0:

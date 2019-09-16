@@ -1,82 +1,50 @@
 #!/usr/bin/env python
-import time, json, mysql.connector, urllib2, sys
+import os, time, json, requests, sys
 
-with open('cred.json') as json_cred:
+#################################################################################
+#Get relative path###############################################################
+#################################################################################
+script_path = os.path.abspath(__file__)
+script_dir = os.path.split(script_path)[0]
+
+#################################################################################
+#Retrieve authentication variables###############################################
+#################################################################################
+with open(os.path.join(script_dir, 'cred.json')) as json_cred:
     cred = json.load(json_cred)
 
-mysql_user = cred['mysql_user']
-mysql_pass = cred['mysql_pass']
-mysql_host = cred['mysql_host']
-mysql_db = 'panoptic_fudhud'
+#################################################################################
+#Setup Panoptic API##############################################################
+#################################################################################
+panoptic_token = cred['panoptic_token']
+panoptic_url = 'http://localhost/panoptic.io/api/fudhud/'
+
+
 
 cryptocompare_coins = {}
 cryptocompare_translator = {
-    'miota' : 'iot',
-    'nano' : 'xrb',
     'ethos' : 'bqx'
 }
 #Still missing 'True Chain (TRUE)', 'WaykiChain (WICC)', 'Dew (DEW)', and 'Paypex (PAYX)'
 
 current_time = time.strftime('%Y-%m-%d %H:00:00')
 
-hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
-       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-       'Accept-Encoding': 'none',
-       'Accept-Language': 'en-US,en;q=0.8',
-       'Connection': 'keep-alive'}
-
-#
-#Setup MySQL connection
-#
-connection = mysql.connector.connect(user=mysql_user, password=mysql_pass,
-                              host=mysql_host,
-                              database=mysql_db)
-
-
-def queryMySQL(query, variables=None):
-    conn = connection.cursor(dictionary=True, buffered=True)
-
-    try:
-        if variables is None:
-            conn.execute(query)
-        else:
-            conn.execute(query, variables)
-
-        try:
-            result = conn.fetchall()
-            connection.commit()
-            return result
-        except:
-            result = conn.lastrowid
-            connection.commit()
-            return result
-    except:
-        e = sys.exc_info()
-        print('SQL ERROR')
-        print(e)
-        return
-
+def getJSON(url):
+    response = requests.get(url, headers = {'User-agent': 'FUDHUD Crawler 0.1'})
+    return response.json()
 
 def lookupCoins():
     global cryptocompare_coins
     url = 'https://www.cryptocompare.com/api/data/coinlist/'
-    request = urllib2.Request(url, headers=hdr)
-    response = urllib2.urlopen(request)
-
-    data = json.load(response)
-
-    cryptocompare_coins = data['Data']
+    response = getJSON(url)
+    cryptocompare_coins = response['Data']
     return cryptocompare_coins
 
 def getPriceStats(limit):
     coins = {}
 
     url = 'https://api.coinmarketcap.com/v1/ticker/?limit=' + str(limit)
-    request = urllib2.Request(url, headers=hdr)
-    response = urllib2.urlopen(request)
-
-    coinmarketcap = json.load(response)
+    coinmarketcap = getJSON(url)
     for coin in coinmarketcap:
         symbol = coin['symbol'].lower()
         usd = coin['price_usd']
@@ -121,10 +89,7 @@ def getSocialStats(symbol):
             return False
 
     url = 'https://www.cryptocompare.com/api/data/socialstats/?id=' + coin_id
-    request = urllib2.Request(url, headers=hdr)
-    response = urllib2.urlopen(request)
-
-    data = json.load(response)
+    data = getJSON(url)
     stats = {}
     if data['Data']['Twitter']['Points'] == 0:
         stats['twitter'] = {
@@ -185,51 +150,74 @@ def getSocialStats(symbol):
     return stats
 
 coins = getPriceStats(200)
+#print(json.dumps(coins, indent=4, separators=(',', ': ')))
+count = 0
 for key in coins:
     print(key)
+
+    cryptocompareID = ''
+    coin_name = ''
+    image_url = ''
+
     social = getSocialStats(key)
-    if social:
+
+    try:
+        cryptocompare_key = cryptocompare_translator[key]
+    except:
+        cryptocompare_key = key
+
+    try:
+        cryptocompareID = cryptocompare_coins[cryptocompare_key.upper()]['Id']
+        coin_name = cryptocompare_coins[cryptocompare_key.upper()]['CoinName']
+        image_url = 'http://cryptocompare.com' + cryptocompare_coins[cryptocompare_key.upper()]['ImageUrl']
+    except:
         try:
-            cryptocompare_key = cryptocompare_translator[key]
-        except:
-            cryptocompare_key = key
+            cryptocompareID = cryptocompare_coins[cryptocompare_key.upper() + '*']['Id']
+            coin_name = cryptocompare_coins[cryptocompare_key.upper() + '*']['CoinName']
+            image_url = 'http://cryptocompare.com' + cryptocompare_coins[cryptocompare_key.upper() + '*']['ImageUrl']
+        except Exception as e:
+            #print(cryptocompare_key.upper())
+            print(e)
 
-        try:
-            coinID = cryptocompare_coins[cryptocompare_key.upper()]['Id']
-            coinName = cryptocompare_coins[cryptocompare_key.upper()]['CoinName']
-            imageURL = 'http://cryptocompare.com' + cryptocompare_coins[cryptocompare_key.upper()]['ImageUrl']
-        except:
-            try:
-                coinID = cryptocompare_coins[cryptocompare_key.upper() + '*']['Id']
-                coinName = cryptocompare_coins[cryptocompare_key.upper() + '*']['CoinName']
-                imageURL = 'http://cryptocompare.com' + cryptocompare_coins[cryptocompare_key.upper() + '*']['ImageUrl']
-            except Exception as e:
-                print(cryptocompare_key.upper())
-                print(e)
-                break
 
-        print(coinID)
-        #print(cryptocompare_coins[key.upper()]['Id'])
-        #print(cryptocompare_coins[key.upper()]['CoinName'])
-        twitterURL = social['twitter'].get('link', '')
-        redditURL = social['reddit'].get('link', '')
-        facebookURL = social['facebook'].get('link', '')
-        gitURL = social['repository'].get('url', '')
+    if (coin_name != ''):
+        count += 1
 
-        result = queryMySQL("SELECT coinID FROM coins WHERE symbol=%s", (key, ))
-        if len(result) == 0:
-            coinID = queryMySQL("INSERT INTO coins(cryptocompareID, name, symbol, imageURL, twitterURL, redditURL, facebookURL, gitURL) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", (coinID, coinName, key, imageURL, twitterURL, redditURL, facebookURL, gitURL))
-        else:
-            for row in result:
-                coinID = row['coinID']
+        if social:
+            #print(cryptocompare_coins[key.upper()]['Id'])
+            #print(cryptocompare_coins[key.upper()]['CoinName'])
+            twitter_url = social['twitter'].get('link', '')
+            reddit_url = social['reddit'].get('link', '')
+            facebook_url = social['facebook'].get('link', '')
+            git_url = social['repository'].get('url', '')
 
-        result = queryMySQL("SELECT priceStatID FROM priceStats WHERE coinID=%s AND datetime=%s", (coinID, current_time))
-        if len(result) == 0:
-            #print(coins[key]['marketcap'])
-            queryMySQL("INSERT INTO priceStats(coinID, datetime, usd, btc, marketcap, dailyVolume, hourlyChange, dailyChange, weeklyChange, lastUpdate) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", (coinID, current_time, coins[key]['usd'], coins[key]['btc'], coins[key]['marketcap'], coins[key]['day_volume'], coins[key]['hour_change'], coins[key]['day_change'], coins[key]['week_change'], coins[key]['last_update']))
+            #Post coin data
+            coinID = requests.post(panoptic_url+'coin', data={'token' : panoptic_token,
+                                                              'cryptocompareid' : cryptocompareID,
+                                                              'name' : coin_name,
+                                                              'symbol' : key,
+                                                              'imageurl' : image_url,
+                                                              'twitterurl' : twitter_url,
+                                                              'redditurl' : reddit_url,
+                                                              'facebookurl' : facebook_url,
+                                                              'giturl' : git_url
+                                                            }).json()['message']
 
-        result = queryMySQL("SELECT socialStatID FROM socialStats WHERE coinID=%s AND datetime=%s", (coinID, current_time))
-        if len(result) == 0:
+            #Post price stats
+            requests.post(panoptic_url+'stat', data={'token' : panoptic_token,
+                                                     'data' : 'price',
+                                                     'coinid' : coinID,
+                                                     'datetime' : current_time,
+                                                     'usd' : coins[key]['usd'],
+                                                     'btc' : coins[key]['btc'],
+                                                     'marketcap' : coins[key]['marketcap'],
+                                                     'dailyvolume' : coins[key]['day_volume'],
+                                                     'hourlychange' : coins[key]['hour_change'],
+                                                     'dailychange' : coins[key]['day_change'],
+                                                     'weeklychange' : coins[key]['week_change'],
+                                                     'lastupdate' : coins[key]['last_update']
+                                                    }).json()['message']
+            #Post social stats
             t_followers = social['twitter'].get('followers', 0)
             t_following = social['twitter'].get('following', 0)
             t_statuses = social['twitter'].get('statuses', 0)
@@ -254,4 +242,33 @@ for key in coins:
             g_cti = social['repository'].get('closed_total_issues', 0)
             g_opi =social['repository'].get('open_pull_issues', 0)
             g_cpi = social['repository'].get('closed_pull_issues', 0)
-            queryMySQL("INSERT INTO socialStats(coinID, datetime, twitter_followers, twitter_following, twitter_statuses, twitter_points, reddit_subscribers, reddit_activeUsers, reddit_hourlyPosts, reddit_dailyPosts, reddit_hourlyComments, reddit_dailyComments, reddit_points, facebook_likes, facebook_talking, facebook_points, git_stars, git_forks, git_subscribers, git_size, git_lastUpdate, git_lastPush, git_openIssues, git_closedIssues, git_openPullIssues, git_closedPullIssues) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", (coinID, current_time, t_followers, t_following, t_statuses, t_points, r_subscribers, r_active, r_pph, r_ppd, r_cph, r_cpd, r_points, f_likes, f_talking, f_points, g_stars, g_forks, g_subscribers, g_size, g_lastupdate, g_lastpush, g_oti, g_cti, g_opi, g_cpi))
+
+            requests.post(panoptic_url+'stat', data={'token' : panoptic_token,
+                                                     'data' : 'social',
+                                                     'coinid' : coinID,
+                                                     'datetime' : current_time,
+                                                     'twitterfollowers' : t_followers,
+                                                     'twitterfollowing' : t_following,
+                                                     'twitterstatuses' : t_statuses,
+                                                     'twitterpoints' : t_points,
+                                                     'redditsubscribers' : r_subscribers,
+                                                     'redditactiveusers' : r_active,
+                                                     'reddithourlyposts' : r_pph,
+                                                     'redditdailyposts' : r_ppd,
+                                                     'reddithourlycomments' : r_cph,
+                                                     'redditdailycomments' : r_cpd,
+                                                     'redditpoints' : r_points,
+                                                     'facebooklikes' : f_likes,
+                                                     'facebooktalking' : f_talking,
+                                                     'facebookpoints' : f_points,
+                                                     'gitstars' : g_stars,
+                                                     'gitforks' : g_forks,
+                                                     'gitsubscribers' : g_subscribers,
+                                                     'gitsize' : g_size,
+                                                     'gitlastupdate' : g_lastupdate,
+                                                     'gitlastpush' : g_lastpush,
+                                                     'gitopenissues' : g_oti,
+                                                     'gitclosedissues' : g_cti,
+                                                     'gitopenpullissues' : g_opi,
+                                                     'gitclosedpullissues' : g_cpi
+                                                    }).json()['message']

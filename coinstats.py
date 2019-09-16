@@ -17,7 +17,7 @@ with open(os.path.join(script_dir, 'cred.json')) as json_cred:
 #Setup Panoptic API##############################################################
 #################################################################################
 panoptic_token = cred['panoptic_token']
-panoptic_url = 'http://localhost/panoptic.io/api/fudhud/'
+panoptic_url = 'https://api.panoptic.io/fudhud/'
 
 
 

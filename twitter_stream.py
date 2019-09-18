@@ -118,7 +118,7 @@ class MyListener(StreamListener):
 
             #Check if user is in our spam list
             #result = queryMySQL("SELECT twitterID, name FROM twitter_spammers WHERE name=%s", (user['screen_name'],))
-            result = requests.get(panoptic_url + 'spammers?data=twitter&name=' + user['screen_name']).json()['message']
+            result = requests.get(panoptic_url + 'spammers?data=twitter&name=' + user['screen_name']).json()['data']
             #If user is not in spam list, continue
             if not result:
                 status_link = 'https://twitter.com/' + user['screen_name'] + '/status/' + str(tweet['id'])
@@ -144,7 +144,7 @@ class MyListener(StreamListener):
                         #print(sentiment)
 
                         #Get current date to check against the database and add to each row
-                        datetime = time.strftime('%Y-%m-%d %H:%M:00')
+                        datetime = time.strftime('%Y-%m-%d %H:%M:00', time.gmtime())
                         #print(datetime)
                         #Start count of topics mentioned, which deterimines whether a user gets added to spam
                         topicCount = 0;
@@ -178,7 +178,7 @@ class MyListener(StreamListener):
                                 tweetObj['media'] = tweetMedia
 
                             notify_node(tweetObj)
-                            requests.post(panoptic_url+'user', data={'twitterid' : user['id'], 'name' : strip_non_ascii(user['name']), 'screenname' : strip_non_ascii(user['screen_name']), 'description' : strip_non_ascii(user['description']), 'location' : user['location'], 'timezone' : user['time_zone'], 'followers' : user['followers_count'], 'friends' : user['friends_count'], 'token' : panoptic_token, 'data' : 'twitter'}).json()['message']
+                            requests.post(panoptic_url+'user', data={'twitterid' : user['id'], 'name' : strip_non_ascii(user['name']), 'screenname' : strip_non_ascii(user['screen_name']), 'description' : strip_non_ascii(user['description']), 'location' : user['location'], 'timezone' : user['time_zone'], 'followers' : user['followers_count'], 'friends' : user['friends_count'], 'token' : panoptic_token, 'data' : 'twitter'}).json()['data']
 
                     else:
                         #Add user to spam list

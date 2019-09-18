@@ -27,7 +27,7 @@ cryptocompare_translator = {
 }
 #Still missing 'True Chain (TRUE)', 'WaykiChain (WICC)', 'Dew (DEW)', and 'Paypex (PAYX)'
 
-current_time = time.strftime('%Y-%m-%d %H:00:00')
+current_time = time.strftime('%Y-%m-%d %H:00:00', time.gmtime())
 
 def getJSON(url):
     response = requests.get(url, headers = {'User-agent': 'FUDHUD Crawler 0.1'})
@@ -201,7 +201,7 @@ for key in coins:
                                                               'redditurl' : reddit_url,
                                                               'facebookurl' : facebook_url,
                                                               'giturl' : git_url
-                                                            }).json()['message']
+                                                            }).json()['data']
 
             #Post price stats
             requests.post(panoptic_url+'stat', data={'token' : panoptic_token,
@@ -216,7 +216,7 @@ for key in coins:
                                                      'dailychange' : coins[key]['day_change'],
                                                      'weeklychange' : coins[key]['week_change'],
                                                      'lastupdate' : coins[key]['last_update']
-                                                    }).json()['message']
+                                                    }).json()['data']
             #Post social stats
             t_followers = social['twitter'].get('followers', 0)
             t_following = social['twitter'].get('following', 0)
@@ -271,4 +271,4 @@ for key in coins:
                                                      'gitclosedissues' : g_cti,
                                                      'gitopenpullissues' : g_opi,
                                                      'gitclosedpullissues' : g_cpi
-                                                    }).json()['message']
+                                                    }).json()['data']

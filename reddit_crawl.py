@@ -83,7 +83,7 @@ def crawl():
                 subreddit = subreddits[i]
                 name = subreddit[25:]
                 #print(name)
-                subredditID = requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : word, 'token' : panoptic_token}).json()['message']
+                subredditID = requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : word, 'token' : panoptic_token}).json()['data']
                 print('Subreddit ID: ' + subredditID)
                 print('5')
                 #json_about = getJSON(subreddit + "/about")
@@ -115,7 +115,7 @@ def crawl():
 
                     #print("New Posts: %s" % str(new_posts))
                     print('7')
-                    activityID = requests.post(panoptic_url+'activity', data={'subredditid' : subredditID, 'datetime' : dt, 'subscribers' : subscribers, 'activeaccounts' : active_accounts, 'newposts' : new_posts, 'data' : 'reddit', 'token' : panoptic_token}).json()['message']
+                    activityID = requests.post(panoptic_url+'activity', data={'subredditid' : subredditID, 'datetime' : dt, 'subscribers' : subscribers, 'activeaccounts' : active_accounts, 'newposts' : new_posts, 'data' : 'reddit', 'token' : panoptic_token}).json()['data']
                     print('8')
                     fp_sentiment = 0
                     fp_count = 0
@@ -136,7 +136,7 @@ def crawl():
                             #print(post_unique)
                             post_url = "https://www.reddit.com" + post.permalink
                             #print(post_url)
-                            result = getJSON(panoptic_url + 'post?data=reddit&post=' + post_unique)['message']
+                            result = getJSON(panoptic_url + 'post?data=reddit&post=' + post_unique)['data']
                             print(result)
                             if not result:
                                 print('12')
@@ -147,7 +147,7 @@ def crawl():
                                 #print(post_author)
                                 post_time = post.created_utc
                                 #print(post_time)
-                                post_userID = requests.post(panoptic_url+'user', data={'name' : post_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                                post_userID = requests.post(panoptic_url+'user', data={'name' : post_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
 
                                 if post.is_self == True:
                                     #print('Selftext')
@@ -171,7 +171,7 @@ def crawl():
 
                                 #print(post_text)
                                 print('14')
-                                post_id = requests.post(panoptic_url + 'post', data={'post' : post_unique, 'subredditid' : subredditID, 'userid' : post_userID, 'unix' : post_time, 'title' : post_title, 'content' : post_text, 'sentiment' : post_sentiment, 'data' : 'reddit', 'token' : panoptic_token})
+                                post_id = requests.post(panoptic_url + 'post', data={'post' : post_unique, 'subredditid' : subredditID, 'userid' : post_userID, 'unix' : post_time, 'title' : post_title, 'content' : post_text, 'sentiment' : post_sentiment, 'data' : 'reddit', 'token' : panoptic_token}).json()['data']
 
                             else:
                                 post_id = result['postID']
@@ -242,13 +242,13 @@ def crawlComments(comments, postID, parentID):
             analysis = tb(comment_body)
             sentiment = analysis.sentiment.polarity
 
-            result = getJSON(panoptic_url + 'comment?data=reddit&comment=' + comment_unique)['message']
+            result = getJSON(panoptic_url + 'comment?data=reddit&comment=' + comment_unique)['data']
 
             if not result:
                 #print("Post ID: %s" % str(comment_postID))
                 #print("Parent ID: %s" % str(comment_parentID))
-                comment_userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
-                comment_id = requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : comment_userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                comment_userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
+                comment_id = requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : comment_userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
             else:
                 comment_id = result['commentID']
 

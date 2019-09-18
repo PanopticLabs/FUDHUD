@@ -106,12 +106,12 @@ def stream():
                 else:
                     subreddits = subreddits + '+' + name
 
-                requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : topic, 'token' : panoptic_token}).json()['message']
+                requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : topic, 'token' : panoptic_token}).json()['data']
 
         #print(subreddits)
         for comment in reddit.subreddit(subreddits).stream.comments():
             #Get current date to check against the database and add to each row
-            dt = time.strftime('%Y-%m-%d %H:%M:00')
+            dt = time.strftime('%Y-%m-%d %H:%M:00', time.gmtime())
 
             comment_body = strip_non_ascii(comment.body)
             #print(comment_body)
@@ -131,9 +131,9 @@ def stream():
 
                 redditor = reddit.redditor(comment_author)
 
-                userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'commentkarma' : str(redditor.comment_karma), 'linkkarma' : str(redditor.link_karma), 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                userID = requests.post(panoptic_url+'user', data={'name' : comment_author, 'commentkarma' : str(redditor.comment_karma), 'linkkarma' : str(redditor.link_karma), 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
                 #print(userID)
-                requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                requests.post(panoptic_url+'comment', data={'comment' : comment_unique, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'userid' : userID, 'unix' : comment_time, 'body' : comment_body, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
 
                 topics = []
                 for topic in coins['dict']:
@@ -142,7 +142,7 @@ def stream():
                         print('')
                         topics.append(topic)
                         #Post mention to api
-                        requests.post(panoptic_url + 'mention', data={'datetime' : dt, 'topic' : topic, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
+                        requests.post(panoptic_url + 'mention', data={'datetime' : dt, 'topic' : topic, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
 
                 #print('NOTIFYING!')
                 commentObj = {'service' : 'redditstream', 'author' : comment_author, 'comment' : comment_body, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'link' : comment_link, 'topics' : topics}

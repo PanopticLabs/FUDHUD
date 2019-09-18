@@ -71,24 +71,17 @@ def crawl():
         reddit_links = links["reddit"]
     #################################################################################
     keywords = getCoins()
-    print('1')
     for word in keywords:
-        print('2')
         if word in reddit_links:
-            print('3')
             subreddits = reddit_links[word]
             i = 0
             while i < len(subreddits):
-                print('4')
                 subreddit = subreddits[i]
                 name = subreddit[25:]
                 #print(name)
                 subredditID = requests.post(panoptic_url+'subreddit', data={'name' : name, 'url' : subreddit, 'topic' : word, 'token' : panoptic_token}).json()['data']
-                print('Subreddit ID: ' + subredditID)
-                print('5')
                 #json_about = getJSON(subreddit + "/about")
                 s = reddit.subreddit(name)
-                print('6')
                 try:
                     #t0 = time.time() # now (in seconds)
                     dt = time.strftime('%Y-%m-%d %H:00:00', time.gmtime())
@@ -114,24 +107,19 @@ def crawl():
                             new_posts += 1
 
                     #print("New Posts: %s" % str(new_posts))
-                    print('7')
                     activityID = requests.post(panoptic_url+'activity', data={'subredditid' : subredditID, 'datetime' : dt, 'subscribers' : subscribers, 'activeaccounts' : active_accounts, 'newposts' : new_posts, 'data' : 'reddit', 'token' : panoptic_token}).json()['data']
-                    print('8')
                     fp_sentiment = 0
                     fp_count = 0
 
                     #posts = json_posts["data"]["children"]
                     for post in s.hot(limit=100):
-                        print('9')
                         if post.stickied == False:
-                            print('10')
                             global comment_count
                             global avg_sentiment
                             comment_count = 0
                             avg_sentiment = 0
                             adjusted_sentiment = 0
                             op_weight = 10 #op_weight is set arbitrarily. It is the importance placed on the sentiment of the original post when calculating the adjusted_sentiment
-                            print('11')
                             post_unique = post.id
                             #print(post_unique)
                             post_url = "https://www.reddit.com" + post.permalink
@@ -139,7 +127,6 @@ def crawl():
                             result = getJSON(panoptic_url + 'post?data=reddit&post=' + post_unique)['data']
                             print(result)
                             if not result:
-                                print('12')
                                 post_title = post.title
                                 post_title = strip_non_ascii(post_title)
                                 #print(post_title)
@@ -162,7 +149,6 @@ def crawl():
                                     #print('Post Sentiment: %s' % str(post_sentiment))
 
                                 else:
-                                    print('13')
                                     #print('Link')
                                     post_text = post.url
                                     analysis = tb(post_title)
@@ -170,7 +156,6 @@ def crawl():
                                     #print('Post Sentiment: %s' % str(post_sentiment))
 
                                 #print(post_text)
-                                print('14')
                                 post_id = requests.post(panoptic_url + 'post', data={'post' : post_unique, 'subredditid' : subredditID, 'userid' : post_userID, 'unix' : post_time, 'title' : post_title, 'content' : post_text, 'sentiment' : post_sentiment, 'data' : 'reddit', 'token' : panoptic_token}).json()['data']
 
                             else:

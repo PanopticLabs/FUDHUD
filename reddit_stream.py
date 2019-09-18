@@ -142,7 +142,7 @@ def stream():
                         print('')
                         topics.append(topic)
                         #Post mention to api
-                        requests.post(panoptic_url + 'mention', data={'datetime' : dt, 'topic' : topic, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['data']
+                        requests.post(panoptic_url + 'mention', data={'datetime' : dt, 'topic' : topic, 'sentiment' : sentiment, 'token' : panoptic_token, 'data' : 'reddit'}).json()['message']
 
                 #print('NOTIFYING!')
                 commentObj = {'service' : 'redditstream', 'author' : comment_author, 'comment' : comment_body, 'post' : comment_postUnique, 'parent' : comment_parentUnique, 'link' : comment_link, 'topics' : topics}

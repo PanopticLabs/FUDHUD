@@ -74,7 +74,7 @@ def getCoins():
 
 def notify_node(array):
     data = json.dumps(array)
-    url = 'https://fierce-forest-58606.herokuapp.com/'
+    url = 'http://165.227.32.248:5000/'
     headers = {'Content-Type': 'application/json', 'Content-Length' : str(len(data))}
     res = requests.post(url, data=data, headers=headers)
 

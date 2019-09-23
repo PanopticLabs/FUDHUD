@@ -178,7 +178,7 @@ class MyListener(StreamListener):
                                 tweetObj['media'] = tweetMedia
 
                             notify_node(tweetObj)
-                            requests.post(panoptic_url+'user', data={'twitterid' : user['id'], 'name' : strip_non_ascii(user['name']), 'screenname' : strip_non_ascii(user['screen_name']), 'description' : strip_non_ascii(user['description']), 'location' : user['location'], 'timezone' : user['time_zone'], 'followers' : user['followers_count'], 'friends' : user['friends_count'], 'token' : panoptic_token, 'data' : 'twitter'}).json()['data']
+                            requests.post(panoptic_url+'user', data={'userid' : user['id'], 'name' : strip_non_ascii(user['name']), 'screenname' : strip_non_ascii(user['screen_name']), 'description' : strip_non_ascii(user['description']), 'location' : user['location'], 'timezone' : user['time_zone'], 'followers' : user['followers_count'], 'friends' : user['friends_count'], 'token' : panoptic_token, 'data' : 'twitter'}).json()['data']
 
                     else:
                         #Add user to spam list
